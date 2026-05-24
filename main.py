@@ -73,7 +73,7 @@ def main():
     parser.add_argument(
         "--core-award",
         type=float,
-        default=0.1,
+        default=0.05,
         help="Multiplier for extra points awarded to peripherals from connected cores (default: 0.1, range: 0-0.2)",
     )
 
