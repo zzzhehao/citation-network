@@ -20,6 +20,16 @@ I find the most valuable use of this is to find the real "cores" of the topic fr
 
 ## Get Started
 
+### Disclaimer
+
+This tool interfaces with the CrossRef and Semantic Scholar APIs. While internal safeguards are implemented to manage request volume, users are solely responsible for their API usage.
+
+Excessive scraping can lead to temporary or permanent IP blocking by these service providers. Please act responsibly:
+
+- Respect the rate limits of the respective APIs.
+- Avoid running unnecessarily large recursive searches.
+- Use this software at your own risk. The author assumes no liability for any service interruptions, API bans, or misuse of this software by third parties.
+
 ### Installation
 
 1. Copy this repository:
@@ -65,6 +75,12 @@ You must provide seed DOIs using one of the following methods:
   ```shell
   python3 main.py -i my_papers.bib
   ```
+
+### Run the demo yourself
+
+```python
+python3 main.py -i example.bib --recursive-threshold 0.15 --penalty-factor 0.5 --core-award 0.05
+```
 
 ### Export & Output Settings
 
