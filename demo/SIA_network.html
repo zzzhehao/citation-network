@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citation Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+
+        #network {
+            flex: 1;
+            position: relative;
+        }
+
+        /* [NEW] Floating Overlay Controls */
+        #overlay-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 260px;
+            background: rgba(22, 27, 34, 0.85);
+            /* Semi-transparent dark background */
+            backdrop-filter: blur(6px);
+            /* Frosted glass effect */
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar {
+            width: 310px;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            padding: 20px 15px 20px 20px;
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        #info-container {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            padding-right: 5px;
+        }
+
+        #info {
+            display: none;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        #info.active {
+            display: block;
+        }
+
+        .paper-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .paper-meta {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        .meta-row {
+            margin-bottom: 6px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            display: inline-block;
+            width: 80px;
+        }
+
+        .meta-value {
+            color: #79c0ff;
+        }
+
+        .doi-link {
+            color: #79c0ff;
+            text-decoration: none;
+            word-break: break-all;
+            font-size: 11px;
+        }
+
+        .doi-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Updated UI Controls for Overlay */
+        .control-group {
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            color: #8b949e;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background: #0d1117;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            padding: 6px;
+            width: 100%;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:hover {
+            border-color: #79c0ff;
+        }
+
+        .color-scale {
+            padding-top: 15px;
+            border-top: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        .scale-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .legend-text {
+            font-size: 12px;
+            color: #e6edf3;
+        }
+
+        .scale-bar {
+            height: 16px;
+            background: linear-gradient(to left, #D1EEEAFF, #A8DBD9FF, #85C4C9FF, #68ABB8FF, #4F90A6FF, #3B738FFF, #2A5674FF);
+            border-radius: 3px;
+            margin-bottom: 5px;
+            margin-top: 12px;
+        }
+
+        .scale-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #30363d;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            min-height: 40px;
+        }
+
+        .stats-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .stats-header:hover {
+            color: #e6edf3;
+        }
+
+        .stats-content {
+            margin-top: 15px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+        }
+
+        .stats-content.active {
+            display: flex;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .stat-label {
+            color: #8b949e;
+        }
+
+        .stat-value {
+            color: #e6edf3;
+            font-weight: 500;
+            text-align: right;
+            max-width: 50%;
+            word-break: break-word;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b949e;
+        }
+
+        svg {
+            background: #0d1117;
+        }
+
+        circle {
+            cursor: pointer;
+            transition: opacity 0.3s, filter 0.3s;
+        }
+
+        circle:hover,
+        circle.active-node {
+            stroke: #ffffff !important;
+            stroke-width: 2px !important;
+            filter: brightness(1.2);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #161b22;
+            padding: 8px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 250px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .link-group {
+            transition: opacity 0.3s;
+        }
+
+        line {
+            stroke: #5c646c;
+            stroke-opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="network">
+
+            <div id="overlay-controls">
+                <div class="control-group">
+                    <label for="color-mode">Peripheral Color Mapping</label>
+                    <select id="color-mode">
+                        <option value="importance" selected>Score (Default)</option>
+                        <option value="year">Publication Year</option>
+                    </select>
+                </div>
+
+                <div class="color-scale">
+                    <div class="scale-label">Node Roles & Timeline</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f3e79b;"></div>
+                        <div class="legend-text">Initial Core</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #eb4a40;"></div>
+                        <div class="legend-text">Secondary Core</div>
+                    </div>
+
+                    <div class="scale-bar"></div>
+                    <div class="scale-text">
+                        <span id="legend-min">Lower Score</span>
+                        <span id="legend-max">Higher Score</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="sidebar">
+            <div id="info-container">
+                <div id="info">
+                    <div class="paper-title" id="title"></div>
+                    <div class="paper-meta">
+                        <div class="meta-row"><span class="meta-label">Authors:</span><span id="authors"></span></div>
+                        <div class="meta-row"><span class="meta-label">Year:</span><span class="meta-value"
+                                id="year"></span></div>
+                        <div class="meta-row"><span class="meta-label">Journal:</span><span id="journal"></span></div>
+                        <div class="meta-row"><span class="meta-label">Citations:</span><span class="meta-value"
+                                id="citations"></span></div>
+                        <div class="meta-row"><span class="meta-label">Score:</span><span class="meta-value"
+                                id="importance"></span></div>
+                        <div class="meta-row"><span class="meta-label">Role:</span><span class="meta-value"
+                                id="role"></span></div>
+                        <div class="meta-row"><span class="meta-label">DOI:</span><a class="doi-link" id="doi-link"
+                                target="_blank"></a></div>
+                    </div>
+                </div>
+
+                <div id="sidebar-placeholder"
+                    style="color: #8b949e; font-size: 13px; text-align: center; margin-top: 40px; padding: 20px;">
+                    Click any node in the network to view its publication details here.
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stats-header" id="stats-header">
+                    <span>Run Statistics</span>
+                    <span id="stats-chevron">▼</span>
+                </div>
+                <div class="stats-content" id="stats-content">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const nodes = [{"id": "10.1080/02705060.2007.9665055", "title": "Trophic Relationship between the Parasitic IsopodI...", "size": 12.15836249209525, "citations": 11, "importance": 999.0, "imp_color_val": 226.6171428571429, "year_color_val": 0.25925925925925924, "year": 2007, "authors": ["Xu Jun", "Zhang Min"], "journal": "Journal of Freshwater Ecology", "fullTitle": "Trophic Relationship between the Parasitic IsopodIchthyoxenus japonensisand the FishCarassius auratus auratusAs Revealed by Stable Isotopes", "is_secondary": false, "is_core": true}, {"id": "10.1111/1365-2435.13530", "title": "Trophic selectivity in aquatic isopods increases w...", "size": 12.510545010206613, "citations": 17, "importance": 999.0, "imp_color_val": 226.6171428571429, "year_color_val": 0.7407407407407407, "year": 2020, "authors": ["Francois Cl\u00e9mentine M.", "Simon Laurent"], "journal": "Functional Ecology", "fullTitle": "Trophic selectivity in aquatic isopods increases with the availability of resources", "is_secondary": false, "is_core": true}, {"id": "10.1007/s00227-013-2284-7", "title": "The tongue-replacing isopod Cymothoa borbonica red...", "size": 12.684845361644413, "citations": 21, "importance": 999.0, "imp_color_val": 226.6171428571429, "year_color_val": 0.48148148148148145, "year": 2013, "authors": ["Parker D.", "Booth A. J."], "journal": "Marine Biology", "fullTitle": "The tongue-replacing isopod Cymothoa borbonica reduces the growth of largespot pompano Trachinotus botla", "is_secondary": false, "is_core": true}, {"id": "10.3354/meps15107", "title": "Trophic ecology of cephalopod paralarvae in the Sa...", "size": 10, "citations": 0, "importance": 999.0, "imp_color_val": 226.6171428571429, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Golikov Alexey V.", "Vokhshoori Natasha"], "journal": "Marine Ecology Progress Series", "fullTitle": "Trophic ecology of cephalopod paralarvae in the Sargasso Sea revealed from compound-specific stable isotope analysis of amino acids (\u03b413C and \u03b415N)", "is_secondary": false, "is_core": true}, {"id": "10.1007/s00442-003-1415-0", "title": "Sulfur stable isotopes separate producers in marin...", "size": 14.588932452323185, "citations": 196, "importance": 999.0, "imp_color_val": 226.6171428571429, "year_color_val": 0.14814814814814814, "year": 2004, "authors": ["Connolly Rod M.", "Guest Michaela A."], "journal": "Oecologia", "fullTitle": "Sulfur stable isotopes separate producers in marine food-web analysis", "is_secondary": false, "is_core": true}, {"id": "10.1038/s41598-019-55719-1", "title": "The first global deep-sea stable isotope assessmen...", "size": 13.010299956639813, "citations": 31, "importance": 999.0, "imp_color_val": 226.6171428571429, "year_color_val": 0.7037037037037037, "year": 2019, "authors": ["Golikov Alexey V.", "Ceia Filipe R."], "journal": "Scientific Reports", "fullTitle": "The first global deep-sea stable isotope assessment reveals the unique trophic ecology of Vampire Squid Vampyroteuthis infernalis (Cephalopoda)", "is_secondary": false, "is_core": true}, {"id": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "title": "USING STABLE ISOTOPES TO ESTIMATE TROPHIC POSITION...", "size": 15, "citations": 5454, "importance": 29.5, "imp_color_val": 5.017142857142858, "year_color_val": 0.07407407407407407, "year": 2002, "authors": ["Post David M."], "journal": "Ecology", "fullTitle": "USING STABLE ISOTOPES TO ESTIMATE TROPHIC POSITION: MODELS, METHODS, AND ASSUMPTIONS", "is_secondary": true, "is_core": true}, {"id": "10.1038/35016565", "title": "Ecosystem size determines food-chain length in lak...", "size": 15, "citations": 603, "importance": 8.875, "imp_color_val": 0.30285714285714294, "year_color_val": 0.0, "year": 2000, "authors": ["Post David M.", "Pace Michael L."], "journal": "Nature", "fullTitle": "Ecosystem size determines food-chain length in lakes", "is_secondary": false, "is_core": false}, {"id": "10.1007/s00442-003-1270-z", "title": "Sources of variation in consumer-diet ?15N enrichm...", "size": 15, "citations": 1296, "importance": 9.15, "imp_color_val": 0.36571428571428594, "year_color_val": 0.1111111111111111, "year": 2003, "authors": ["Vanderklift Mathew A.", "Ponsard Sergine"], "journal": "Oecologia", "fullTitle": "Sources of variation in consumer-diet ?15N enrichment: a meta-analysis", "is_secondary": false, "is_core": false}, {"id": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "title": "MEASURING INDIVIDUAL-LEVEL RESOURCE SPECIALIZATION", "size": 15, "citations": 356, "importance": 9.25, "imp_color_val": 0.3885714285714287, "year_color_val": 0.07407407407407407, "year": 2002, "authors": ["Bolnick Daniel I.", "Yang Louie H."], "journal": "Ecology", "fullTitle": "MEASURING INDIVIDUAL-LEVEL RESOURCE SPECIALIZATION", "is_secondary": false, "is_core": false}, {"id": "10.1111/j.1365-2656.2011.01806.x", "title": "Comparing isotopic niche widths among and within c...", "size": 15, "citations": 2779, "importance": 44.0, "imp_color_val": 8.331428571428575, "year_color_val": 0.4074074074074074, "year": 2011, "authors": ["Jackson Andrew L.", "Inger Richard"], "journal": "Journal of Animal Ecology", "fullTitle": "Comparing isotopic niche widths among and within communities: SIBER - Stable Isotope Bayesian Ellipses in R", "is_secondary": true, "is_core": true}, {"id": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "title": "CAN STABLE ISOTOPE RATIOS PROVIDE FOR COMMUNITY-WI...", "size": 15, "citations": 839, "importance": 41.5, "imp_color_val": 7.7600000000000025, "year_color_val": 0.25925925925925924, "year": 2007, "authors": ["Layman Craig A.", "Arrington D. Albrey"], "journal": "Ecology", "fullTitle": "CAN STABLE ISOTOPE RATIOS PROVIDE FOR COMMUNITY-WIDE MEASURES OF TROPHIC STRUCTURE?", "is_secondary": true, "is_core": true}, {"id": "10.1146/annurev-ecolsys-102209-144726", "title": "On the Use of Stable Isotopes in Trophic Ecology", "size": 15, "citations": 899, "importance": 43.0, "imp_color_val": 8.102857142857145, "year_color_val": 0.4074074074074074, "year": 2011, "authors": ["Boecklen William J.", "Yarnes Christopher T."], "journal": "Annual Review of Ecology, Evolution, and Systematics", "fullTitle": "On the Use of Stable Isotopes in Trophic Ecology", "is_secondary": true, "is_core": true}, {"id": "10.1002/9780470995310", "title": "Cephalopods", "size": 15, "citations": 371, "importance": 3.0, "imp_color_val": -1.0400000000000003, "year_color_val": 0.18518518518518517, "year": 2005, "authors": [], "journal": "Unknown", "fullTitle": "Cephalopods", "is_secondary": true, "is_core": true}, {"id": "10.1098/rspb.2005.3115", "title": "Stable isotopes, beaks and predators: a new tool t...", "size": 14.322736004469949, "citations": 144, "importance": 35.0, "imp_color_val": 6.274285714285716, "year_color_val": 0.18518518518518517, "year": 2005, "authors": ["Cherel Yves", "Hobson Keith A"], "journal": "Proceedings of the Royal Society B: Biological Sciences", "fullTitle": "Stable isotopes, beaks and predators: a new tool to study the trophic ecology of cephalopods, including giant and colossal squids", "is_secondary": true, "is_core": true}, {"id": "10.1098/rsbl.2009.0024", "title": "Stable isotopes document the trophic structure of ...", "size": 13.714664992862538, "citations": 71, "importance": 31.0, "imp_color_val": 5.360000000000001, "year_color_val": 0.3333333333333333, "year": 2009, "authors": ["Cherel Y.", "Ridoux V."], "journal": "Biology Letters", "fullTitle": "Stable isotopes document the trophic structure of a deep-sea cephalopod assemblage including giant octopod and giant squid", "is_secondary": true, "is_core": true}, {"id": "10.3354/meps13002", "title": "Amino acid \u03b413C and \u03b415N from sclerotized beaks: a...", "size": 12.795880017344075, "citations": 24, "importance": 7.625, "imp_color_val": 0.017142857142857185, "year_color_val": 0.7037037037037037, "year": 2019, "authors": ["Cherel Y", "Bustamante P"], "journal": "Marine Ecology Progress Series", "fullTitle": "Amino acid \u03b413C and \u03b415N from sclerotized beaks: a new tool to investigate the foraging ecology of cephalopods, including giant and colossal squids", "is_secondary": false, "is_core": false}, {"id": "10.4319/lom.2009.7.740", "title": "Determination of aquatic food\u2010web structure based ...", "size": 15, "citations": 595, "importance": 28.0, "imp_color_val": 4.674285714285715, "year_color_val": 0.3333333333333333, "year": 2009, "authors": ["Chikaraishi Yoshito", "Ogawa Nanako O."], "journal": "Limnology and Oceanography: Methods", "fullTitle": "Determination of aquatic food\u2010web structure based on compound\u2010specific nitrogen isotopic composition of amino acids", "is_secondary": true, "is_core": true}, {"id": "10.1007/978-90-481-3354-3_14", "title": "Using Isoscapes to Trace the Movements and Foragin...", "size": 14.97991695884967, "citations": 308, "importance": 39.5, "imp_color_val": 7.302857142857144, "year_color_val": 0.3333333333333333, "year": 2009, "authors": ["Graham Brittany S.", "Koch Paul L."], "journal": "Isoscapes", "fullTitle": "Using Isoscapes to Trace the Movements and Foraging Behavior of Top Predators in Oceanic Ecosystems", "is_secondary": true, "is_core": true}, {"id": "10.1111/j.1469-185X.2011.00208.x", "title": "Applying stable isotopes to examine food\u2010web struc...", "size": 15, "citations": 1108, "importance": 46.5, "imp_color_val": 8.902857142857146, "year_color_val": 0.4074074074074074, "year": 2011, "authors": ["Layman Craig A.", "Araujo Marcio S."], "journal": "Biological Reviews", "fullTitle": "Applying stable isotopes to examine food\u2010web structure: an overview of analytical tools", "is_secondary": true, "is_core": true}, {"id": "10.1111/1365-2656.13333", "title": "Functional traits explain trophic allometries of c...", "size": 12.795880017344075, "citations": 24, "importance": 25.0, "imp_color_val": 3.9885714285714293, "year_color_val": 0.7407407407407407, "year": 2020, "authors": ["Murphy Kieran J.", "Pecl Gretta T."], "journal": "Journal of Animal Ecology", "fullTitle": "Functional traits explain trophic allometries of cephalopods", "is_secondary": true, "is_core": true}, {"id": "10.1002/ece3.73671", "title": "2D to 3D: Exploring Variation of Niche Dimensional...", "size": 10, "citations": 0, "importance": 9.0, "imp_color_val": 0.3314285714285715, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Paloma C. Carvalho", "Kelsey\u00a0F. Johnson"], "journal": "Ecology and Evolution", "fullTitle": "2D to 3D: Exploring Variation of Niche Dimensionality Across Consumers in a Coastal Arctic Ecosystem and Implications on Interpretation", "is_secondary": false, "is_core": false}, {"id": "10.1007/s00227-026-04826-5", "title": "Realized dietary specialization in an Antarctic ke...", "size": 10, "citations": 0, "importance": 11.924999999999999, "imp_color_val": 1.0, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["M. Bayat", "Ginevra Lilli"], "journal": "Marine Biology", "fullTitle": "Realized dietary specialization in an Antarctic keystone species, the sea urchin Sterechinus neumayeri", "is_secondary": false, "is_core": false}, {"id": "10.3390/biology14111508", "title": "Diet Reconstruction Under Limited Prior Informatio...", "size": 10, "citations": 0, "importance": 9.05, "imp_color_val": 0.34285714285714314, "year_color_val": 0.9259259259259259, "year": 2025, "authors": ["Yongsong Zhao", "Xiujuan Shan"], "journal": "Biology", "fullTitle": "Diet Reconstruction Under Limited Prior Information: Dietary Contributions and Isotopic Niche of Metridium senile in the North Yellow Sea", "is_secondary": false, "is_core": false}, {"id": "10.1017/S0025315400002502", "title": "Geographical variations in carbon and nitrogen sta...", "size": 13.898780013289826, "citations": 88, "importance": 8.25, "imp_color_val": 0.1600000000000001, "year_color_val": 0.0, "year": 2000, "authors": ["Takai Noriyuki", "Onaka Sayaka"], "journal": "Journal of the Marine Biological Association of the United Kingdom", "fullTitle": "Geographical variations in carbon and nitrogen stable isotope ratios in squid", "is_secondary": false, "is_core": false}, {"id": "10.3354/meps12767", "title": "Ontogenetic changes in stable isotope (\u03b413C and \u03b41...", "size": 13.225567713439471, "citations": 40, "importance": 7.75, "imp_color_val": 0.04571428571428576, "year_color_val": 0.6666666666666666, "year": 2018, "authors": ["Golikov AV", "Ceia FR"], "journal": "Marine Ecology Progress Series", "fullTitle": "Ontogenetic changes in stable isotope (\u03b413C and \u03b415N) values in squid Gonatus fabricii (Cephalopoda) reveal its important ecological role in the Arctic", "is_secondary": false, "is_core": false}, {"id": "10.64898/2026.04.29.721722", "title": "Regional ecological variation drives isotopic nich...", "size": 10, "citations": 0, "importance": 23.5, "imp_color_val": 3.6457142857142864, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["J. Veloso", "G. Barord"], "journal": "bioRxiv", "fullTitle": "Regional ecological variation drives isotopic niche divergence in Pacific nautiloids", "is_secondary": true, "is_core": true}, {"id": "10.1016/j.fishres.2023.106921", "title": "Trophic niche partitioning of golden cuttlefish (S...", "size": 11.204119982655925, "citations": 3, "importance": 8.325, "imp_color_val": 0.17714285714285705, "year_color_val": 0.8888888888888888, "year": 2024, "authors": ["Yuyang Zhang", "Linlong Wang"], "journal": "Fisheries Research", "fullTitle": "Trophic niche partitioning of golden cuttlefish (Sepia esculenta) during ontogeny revealed by stable isotope analysis and DNA metabarcoding", "is_secondary": false, "is_core": false}, {"id": "10.3389/fmars.2023.1254461", "title": "Towards unlocking the trophic roles of rarely enco...", "size": 10.602059991327963, "citations": 1, "importance": 8.625, "imp_color_val": 0.2457142857142858, "year_color_val": 0.8518518518518519, "year": 2023, "authors": ["Bethany Jackel", "R. Baring"], "journal": "Frontiers in Marine Science", "fullTitle": "Towards unlocking the trophic roles of rarely encountered squid: Opportunistic samples of Taningia danae and a Chiroteuthis aff. veranii reveal that the Southern Ocean top predators are nutrient links connecting deep-sea and shelf-slope environments", "is_secondary": false, "is_core": false}, {"id": "10.3389/fphys.2022.1038064", "title": "The significance of cephalopod beaks as a research...", "size": 12.982723387668546, "citations": 30, "importance": 8.625, "imp_color_val": 0.2457142857142858, "year_color_val": 0.8148148148148148, "year": 2022, "authors": ["J. Xavier", "A. Golikov"], "journal": "Frontiers in Physiology", "fullTitle": "The significance of cephalopod beaks as a research tool: An update", "is_secondary": false, "is_core": false}, {"id": "10.3389/fmars.2022.818088", "title": "Stable Isotope Analysis Revealed Ontogenetic Chang...", "size": 11.556302500767288, "citations": 5, "importance": 10.8, "imp_color_val": 0.7428571428571432, "year_color_val": 0.8148148148148148, "year": 2022, "authors": ["Wang Linlong", "Liu Yang"], "journal": "Frontiers in Marine Science", "fullTitle": "Stable Isotope Analysis Revealed Ontogenetic Changes in Trophic Ecology and Migration Patterns of Sepia esculenta in the Northern Coastal Waters of China", "is_secondary": false, "is_core": false}, {"id": "10.3389/fmars.2020.616116", "title": "Discrete Spawning Aggregations of the Loliginid Sq...", "size": 10.954242509439325, "citations": 2, "importance": 21.0, "imp_color_val": 3.0742857142857147, "year_color_val": 0.7777777777777778, "year": 2021, "authors": ["Sergio A. Carrasco", "M. Bravo"], "journal": "Frontiers in Marine Science", "fullTitle": "Discrete Spawning Aggregations of the Loliginid Squid Doryteuthis gahi Reveal Life-History Interactions of a Dwarf Morphotype at the Center of Its Distribution Range", "is_secondary": true, "is_core": true}, {"id": "10.1038/s41598-020-78645-z", "title": "Diet and life history reduce interspecific and int...", "size": 12.602059991327963, "citations": 19, "importance": 8.625, "imp_color_val": 0.2457142857142858, "year_color_val": 0.7407407407407407, "year": 2020, "authors": ["A. Golikov", "F. Ceia"], "journal": "Scientific Reports", "fullTitle": "Diet and life history reduce interspecific and intraspecific competition among three sympatric Arctic cephalopods", "is_secondary": false, "is_core": false}, {"id": "10.1007/s00227-024-04592-2", "title": "Trophic ecology of squids in the Benguela Upwellin...", "size": 10.602059991327963, "citations": 1, "importance": 7.55, "imp_color_val": 0.0, "year_color_val": 0.9259259259259259, "year": 2025, "authors": ["K. Kremer", "Wilhelm Hagen"], "journal": "Marine Biology", "fullTitle": "Trophic ecology of squids in the Benguela Upwelling System elucidated by combining stomach content, stable isotope and fatty acid analyses", "is_secondary": false, "is_core": false}, {"id": "10.1007/s00227-024-04571-7", "title": "Using museum specimens of northern shortfin squid ...", "size": 10.602059991327963, "citations": 1, "importance": 7.55, "imp_color_val": 0.0, "year_color_val": 0.8888888888888888, "year": 2024, "authors": ["Valerie H. Dimkovikj", "M. Staudinger"], "journal": "Marine Biology", "fullTitle": "Using museum specimens of northern shortfin squid (Illex illecebrosus) to evaluate long-term ecological changes in the Northeast U.S. Continental Shelf large marine ecosystem", "is_secondary": false, "is_core": false}, {"id": "10.1111/j.0021-8790.2004.00861.x", "title": "Determining trophic niche width: a novel approach ...", "size": 15, "citations": 1157, "importance": 36.0, "imp_color_val": 6.5028571428571444, "year_color_val": 0.14814814814814814, "year": 2004, "authors": ["BEARHOP STUART", "ADAMS COLIN E."], "journal": "Journal of Animal Ecology", "fullTitle": "Determining trophic niche width: a novel approach using stable isotope analysis", "is_secondary": true, "is_core": true}, {"id": "10.1111/1365-2656.70277", "title": "A new approach to quantify isotopic (co)variation ...", "size": 10, "citations": 0, "importance": 11.55, "imp_color_val": 0.9142857142857147, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Federico Garrido\u2010de Le\u00f3n", "Julien G. A. Martin"], "journal": "Journal of Animal Ecology", "fullTitle": "A new approach to quantify isotopic (co)variation across levels of biological organization using double\u2010hierarchical generalized linear models", "is_secondary": false, "is_core": false}, {"id": "10.1016/j.fooweb.2025.e00429", "title": "The isotopic niche breadth of aquatic insects incr...", "size": 10, "citations": 0, "importance": 23.0, "imp_color_val": 3.531428571428572, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Diego M. P. Castro", "Robert M. Hughes"], "journal": "Food Webs", "fullTitle": "The isotopic niche breadth of aquatic insects increases with elevation in neotropical mountain streams", "is_secondary": true, "is_core": true}, {"id": "10.1007/s10750-026-06144-9", "title": "Diet and resource partitioning between egrets and ...", "size": 10, "citations": 0, "importance": 9.15, "imp_color_val": 0.36571428571428594, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Amanda Oliveira Travessas", "Cindy Tavares Barreto"], "journal": "Hydrobiologia", "fullTitle": "Diet and resource partitioning between egrets and herons in an estuarine colony in southern Brazil", "is_secondary": false, "is_core": false}, {"id": "10.1038/s41586-025-10077-z", "title": "Fossil isotope evidence for trophic simplification...", "size": 10, "citations": 0, "importance": 8.549999999999999, "imp_color_val": 0.22857142857142843, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["J. Lueders-Dumont", "Aaron O\u2019Dea"], "journal": "Nature", "fullTitle": "Fossil isotope evidence for trophic simplification on modern Caribbean reefs", "is_secondary": false, "is_core": false}, {"id": "10.1002/iroh.70033", "title": "Potential Trophic Competition Between the European...", "size": 10, "citations": 0, "importance": 8.549999999999999, "imp_color_val": 0.22857142857142843, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Mathieu Toutain", "P. Haubrock"], "journal": "International review of hydrobiology", "fullTitle": "Potential Trophic Competition Between the European Perch Perca fluviatilis and Pikeperch Sander lucioperca", "is_secondary": false, "is_core": false}, {"id": "10.1007/s10641-025-01783-8", "title": "Stable isotope analysis shows limited assimilation...", "size": 10, "citations": 0, "importance": 9.274999999999999, "imp_color_val": 0.3942857142857141, "year_color_val": 0.9259259259259259, "year": 2025, "authors": ["Justin M. Sturtz", "Brandon K. Peoples"], "journal": "Environmental Biology of Fishes", "fullTitle": "Stable isotope analysis shows limited assimilation of carbohydrates in muscle tissue of an omnivorous fish", "is_secondary": false, "is_core": false}, {"id": "10.1007/s00227-025-04738-w", "title": "Feeding ecology of two congeneric seabirds at the ...", "size": 10.602059991327963, "citations": 1, "importance": 9.274999999999999, "imp_color_val": 0.3942857142857141, "year_color_val": 0.9259259259259259, "year": 2025, "authors": ["L. M. Morales", "W. Mills"], "journal": "Marine Biology", "fullTitle": "Feeding ecology of two congeneric seabirds at the South Shetland Islands, Antarctica", "is_secondary": false, "is_core": false}, {"id": "10.1016/j.jas.2025.106379", "title": "The signal and the noise: inherent challenges for ...", "size": 10.602059991327963, "citations": 1, "importance": 9.274999999999999, "imp_color_val": 0.3942857142857141, "year_color_val": 0.9259259259259259, "year": 2025, "authors": ["T. O\u2019Connell"], "journal": "Journal of Archaeological Science", "fullTitle": "The signal and the noise: inherent challenges for isotopic studies in bioarchaeology", "is_secondary": false, "is_core": false}, {"id": "10.1086/343878", "title": "The Ecology of Individuals: Incidence and Implicat...", "size": 15, "citations": 2321, "importance": 32.0, "imp_color_val": 5.58857142857143, "year_color_val": 0.1111111111111111, "year": 2003, "authors": ["Bolnick Daniel\u00a0I.", "Svanb\u00e4ck Richard"], "journal": "The American Naturalist", "fullTitle": "The Ecology of Individuals: Incidence and Implications of Individual Specialization", "is_secondary": true, "is_core": true}, {"id": "10.1002/oik.12063", "title": "Integrating network and stable isotope approaches ...", "size": 10, "citations": 0, "importance": 9.0, "imp_color_val": 0.3314285714285715, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Chlo\u00e9 Vagnon", "Tyler D. Tunney"], "journal": "Oikos", "fullTitle": "Integrating network and stable isotope approaches to reveal food web structures", "is_secondary": false, "is_core": false}, {"id": "10.1016/j.marpolbul.2026.119552", "title": "Algal resource availability shapes trophic converg...", "size": 10, "citations": 0, "importance": 9.0, "imp_color_val": 0.3314285714285715, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["H. Kang", "Jae-bin Jang"], "journal": "Marine Pollution Bulletin", "fullTitle": "Algal resource availability shapes trophic convergence of deposit feeders in a low-turbidity dredged estuary.", "is_secondary": false, "is_core": false}, {"id": "10.1002/ece3.73593", "title": "Genetic and Ecological Divergence Between Northwes...", "size": 10, "citations": 0, "importance": 7.85, "imp_color_val": 0.06857142857142855, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Caila E. Kucheravy", "Evelien de Greef"], "journal": "Ecology and Evolution", "fullTitle": "Genetic and Ecological Divergence Between Northwest Atlantic Killer Whale Populations", "is_secondary": false, "is_core": false}];
+        const links = [{"source": "10.1038/s41598-020-78645-z", "target": "10.1098/rsbl.2009.0024", "weight": 7.0}, {"source": "10.1007/s00227-024-04571-7", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.3354/meps15107", "target": "10.4319/lom.2009.7.740", "weight": 8.0}, {"source": "10.1007/s00227-024-04571-7", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.3389/fphys.2022.1038064", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1086/343878", "weight": 8.5}, {"source": "10.1007/s00227-025-04738-w", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.0}, {"source": "10.3389/fmars.2023.1254461", "target": "10.1038/s41598-019-55719-1", "weight": 10.0}, {"source": "10.1007/s00227-024-04592-2", "target": "10.1098/rsbl.2009.0024", "weight": 7.0}, {"source": "10.3390/biology14111508", "target": "10.4319/lom.2009.7.740", "weight": 4.0}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.3389/fmars.2023.1254461", "target": "10.1098/rsbl.2009.0024", "weight": 7.0}, {"source": "10.3354/meps15107", "target": "10.1111/1365-2656.13333", "weight": 10.5}, {"source": "10.1007/s00227-013-2284-7", "target": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "weight": 5.5}, {"source": "10.3354/meps15107", "target": "10.1098/rspb.2005.3115", "weight": 12.5}, {"source": "10.1080/02705060.2007.9665055", "target": "10.1038/35016565", "weight": 3.0}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 9.0}, {"source": "10.1038/s41586-025-10077-z", "target": "10.1086/343878", "weight": 5.5}, {"source": "10.1007/s00227-026-04826-5", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.1111/j.1365-2656.2011.01806.x", "target": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "weight": 11.5}, {"source": "10.1007/s00227-026-04826-5", "target": "10.1007/s00442-003-1415-0", "weight": 4.0}, {"source": "10.1111/1365-2656.13333", "target": "10.1098/rsbl.2009.0024", "weight": 10.5}, {"source": "10.1038/s41586-025-10077-z", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.3354/meps12767", "weight": 10.0}, {"source": "10.1002/oik.12063", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 8.5}, {"source": "10.3389/fmars.2022.818088", "target": "10.1098/rsbl.2009.0024", "weight": 7.5}, {"source": "10.1111/1365-2656.70277", "target": "10.1086/343878", "weight": 6.0}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 10.0}, {"source": "10.1111/1365-2656.70277", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.5}, {"source": "10.1098/rspb.2005.3115", "target": "10.1007/s00442-003-1270-z", "weight": 8.5}, {"source": "10.1007/s10750-026-06144-9", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 7.5}, {"source": "10.1002/ece3.73671", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 6.0}, {"source": "10.3354/meps15107", "target": "10.3354/meps13002", "weight": 7.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 12.5}, {"source": "10.1016/j.marpolbul.2026.119552", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 6.0}, {"source": "10.1098/rsbl.2009.0024", "target": "10.1098/rspb.2005.3115", "weight": 12.5}, {"source": "10.3389/fmars.2020.616116", "target": "10.1111/1365-2656.13333", "weight": 8.0}, {"source": "10.3389/fmars.2020.616116", "target": "10.1098/rspb.2005.3115", "weight": 10.0}, {"source": "10.1007/s10641-025-01783-8", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 7.5}, {"source": "10.1002/ece3.73593", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 6.0}, {"source": "10.1016/j.fishres.2023.106921", "target": "10.1038/s41598-019-55719-1", "weight": 10.0}, {"source": "10.1002/ece3.73593", "target": "10.1007/978-90-481-3354-3_14", "weight": 3.0}, {"source": "10.1016/j.jas.2025.106379", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.0}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 9.0}, {"source": "10.1002/ece3.73593", "target": "10.4319/lom.2009.7.740", "weight": 4.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1007/978-90-481-3354-3_14", "weight": 10.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1098/rsbl.2009.0024", "weight": 14.0}, {"source": "10.1007/s00227-026-04826-5", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 9.0}, {"source": "10.1007/s10641-025-01783-8", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 9.5}, {"source": "10.1002/oik.12063", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 6.0}, {"source": "10.1002/iroh.70033", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 7.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.3389/fmars.2022.818088", "weight": 6.5}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 15.0}, {"source": "10.1111/j.1365-2656.2011.01806.x", "target": "10.1086/343878", "weight": 11.0}, {"source": "10.1038/s41598-020-78645-z", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.3389/fphys.2022.1038064", "target": "10.1038/s41598-019-55719-1", "weight": 10.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1017/S0025315400002502", "weight": 10.0}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "weight": 9.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.3354/meps12767", "weight": 6.0}, {"source": "10.3354/meps15107", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 13.5}, {"source": "10.1007/s00227-024-04592-2", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.1080/02705060.2007.9665055", "target": "10.1007/s00442-003-1270-z", "weight": 3.0}, {"source": "10.1098/rspb.2005.3115", "target": "10.1017/S0025315400002502", "weight": 8.5}, {"source": "10.1007/s00227-025-04738-w", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 7.5}, {"source": "10.3389/fmars.2023.1254461", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 10.5}, {"source": "10.1111/1365-2435.13530", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 8.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 15.0}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1086/343878", "weight": 12.0}, {"source": "10.1038/s41586-025-10077-z", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 7.5}, {"source": "10.3389/fmars.2022.818088", "target": "10.1098/rspb.2005.3115", "weight": 9.0}, {"source": "10.1111/1365-2435.13530", "target": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "weight": 2.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 13.0}, {"source": "10.1080/02705060.2007.9665055", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 6.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1038/s41598-019-55719-1", "weight": 13.0}, {"source": "10.1111/1365-2656.13333", "target": "10.3354/meps13002", "weight": 6.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.4319/lom.2009.7.740", "weight": 10.5}, {"source": "10.3389/fmars.2020.616116", "target": "10.3354/meps13002", "weight": 4.5}, {"source": "10.3354/meps15107", "target": "10.1002/9780470995310", "weight": 7.0}, {"source": "10.3390/biology14111508", "target": "10.1007/s00442-003-1415-0", "weight": 3.5}, {"source": "10.1016/j.fishres.2023.106921", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.1016/j.fishres.2023.106921", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1098/rspb.2005.3115", "weight": 15.5}, {"source": "10.1016/j.jas.2025.106379", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 7.5}, {"source": "10.1016/j.marpolbul.2026.119552", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 9.5}, {"source": "10.1111/1365-2656.70277", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 10.0}, {"source": "10.1007/s10750-026-06144-9", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 8.5}, {"source": "10.1007/s00227-024-04571-7", "target": "10.1098/rsbl.2009.0024", "weight": 7.0}, {"source": "10.1007/s00227-024-04592-2", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.3389/fphys.2022.1038064", "target": "10.1098/rsbl.2009.0024", "weight": 7.0}, {"source": "10.1146/annurev-ecolsys-102209-144726", "target": "10.4319/lom.2009.7.740", "weight": 9.0}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1007/s00442-003-1415-0", "weight": 6.5}, {"source": "10.3390/biology14111508", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 9.5}, {"source": "10.1007/s00227-026-04826-5", "target": "10.1086/343878", "weight": 6.0}, {"source": "10.3389/fmars.2020.616116", "target": "10.1002/9780470995310", "weight": 4.5}, {"source": "10.3354/meps15107", "target": "10.1007/978-90-481-3354-3_14", "weight": 7.0}, {"source": "10.1016/j.jas.2025.106379", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 9.5}, {"source": "10.3354/meps15107", "target": "10.1098/rsbl.2009.0024", "weight": 11.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 11.0}, {"source": "10.1002/oik.12063", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 9.5}, {"source": "10.1111/j.1365-2656.2011.01806.x", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 13.0}, {"source": "10.3354/meps15107", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 12.5}, {"source": "10.1007/s00227-025-04738-w", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 9.5}, {"source": "10.1002/ece3.73671", "target": "10.1007/s00442-003-1415-0", "weight": 3.5}, {"source": "10.1007/s10750-026-06144-9", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.0}, {"source": "10.1111/1365-2656.13333", "target": "10.1038/s41598-019-55719-1", "weight": 13.5}, {"source": "10.1007/s10641-025-01783-8", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.0}, {"source": "10.3389/fmars.2020.616116", "target": "10.1038/s41598-019-55719-1", "weight": 11.5}, {"source": "10.3389/fmars.2022.818088", "target": "10.1038/s41598-019-55719-1", "weight": 10.5}, {"source": "10.3389/fmars.2020.616116", "target": "10.1098/rsbl.2009.0024", "weight": 8.5}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 14.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1002/9780470995310", "weight": 10.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1111/1365-2656.13333", "weight": 9.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1098/rspb.2005.3115", "weight": 11.5}, {"source": "10.3354/meps15107", "target": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "weight": 10.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1017/S0025315400002502", "weight": 6.0}, {"source": "10.1086/343878", "target": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "weight": 5.5}, {"source": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "target": "10.1038/35016565", "weight": 6.0}, {"source": "10.3354/meps15107", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 12.0}, {"source": "10.1002/iroh.70033", "target": "10.1086/343878", "weight": 5.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 16.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1038/35016565", "weight": 6.0}, {"source": "10.1111/1365-2656.70277", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 6.5}, {"source": "10.1002/iroh.70033", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 8.0}, {"source": "10.1007/s00227-013-2284-7", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 8.0}, {"source": "10.1111/1365-2656.13333", "target": "10.3354/meps12767", "weight": 6.5}, {"source": "10.1146/annurev-ecolsys-102209-144726", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 12.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1007/s00442-003-1270-z", "weight": 6.0}, {"source": "10.1038/s41598-020-78645-z", "target": "10.1038/s41598-019-55719-1", "weight": 10.0}, {"source": "10.1002/ece3.73671", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 8.5}, {"source": "10.1016/j.marpolbul.2026.119552", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 8.5}];
+        const stats = {"Run Name": "SIA", "Total Graph Nodes": 48, "Initial Core Nodes": 6, "Secondary Core Nodes": 16, "Peripheral Nodes": 26, "Total Graph Edges": 133, "Total Papers Scraped": 929, "Max Results / Query": 50, "Max Iterations": 5, "Promotability Start Pct": "15.0%", "Peripheral Vote Base": 0.5, "Core Award Multiplier": 0.05, "Iter Penalty Factor": 0.5, "Min Year Filter": 2000, "Caching": "Enabled", "Network Filter Parameter": 0.2};
+
+        const statsContent = document.getElementById('stats-content');
+        for (const [key, value] of Object.entries(stats)) {
+            const row = document.createElement('div');
+            row.className = 'stat-row';
+            row.innerHTML = `<span class="stat-label">${key}</span><span class="stat-value">${value}</span>`;
+            statsContent.appendChild(row);
+        }
+
+        const statsHeader = document.getElementById('stats-header');
+        statsHeader.addEventListener('click', () => {
+            statsContent.classList.toggle('active');
+            document.getElementById('stats-chevron').textContent = statsContent.classList.contains('active') ? '▲' : '▼';
+
+            if (statsContent.classList.contains('active')) {
+                setTimeout(() => {
+                    document.getElementById('sidebar').scrollTo({ top: document.getElementById('sidebar').scrollHeight, behavior: 'smooth' });
+                }, 50);
+            }
+        });
+
+        // ------------------ D3 VISUALIZATION ------------------
+        const width = document.getElementById('network').clientWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select('#network').append('svg').attr('width', width).attr('height', height);
+        const g = svg.append('g');
+
+        svg.call(d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => g.attr('transform', e.transform)));
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto")
+            .attr("markerWidth", 8).attr("markerHeight", 8).attr("xoverflow", "visible")
+            .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#5c646c").style("stroke", "none");
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead-dimmed").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto")
+            .attr("markerWidth", 8).attr("markerHeight", 8).attr("xoverflow", "visible")
+            .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#5c646c").attr("fill-opacity", "0.05").style("stroke", "none");
+
+        const maxWeight = Math.max(1, d3.max(links, d => d.weight) || 1);
+
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id)
+                .distance(d => {
+                    const norm = Math.log1p(d.weight) / Math.log1p(maxWeight);
+                    return 80 - (norm * 60);
+                })
+                .strength(d => {
+                    const norm = Math.log1p(d.weight) / Math.log1p(maxWeight);
+                    return 0.05 + (norm * 0.25);
+                })
+            )
+            .force('charge', d3.forceManyBody().strength(-500).distanceMax(400))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => d.size + 10));
+
+        const linkGroup = g.selectAll('.link-group').data(links).enter().append('g').attr('class', 'link-group');
+        const link = linkGroup.append('line').attr("marker-end", "url(#arrowhead)");
+
+        const colorScale = d3.scaleLinear()
+            .domain([1, 0.83, 0.66, 0.5, 0.33, 0.16, 0])
+            .range(['#D1EEEAFF', '#A8DBD9FF', '#85C4C9FF', '#68ABB8FF', '#4F90A6FF', '#3B738FFF', '#2A5674FF']);
+
+        const node = g.selectAll('circle').data(nodes).enter().append('circle')
+            .attr('r', d => d.size)
+            .attr('fill', d => {
+                if (d.importance === 999) return '#fcde9c';
+                if (d.is_secondary) return '#eb4a40';
+                return colorScale(d.imp_color_val);
+            })
+            .attr('stroke', '#30363d').attr('stroke-width', 1)
+            .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended))
+
+            .on('click', (event, d) => {
+                event.stopPropagation();
+                showInfo(d);
+                const connected = new Set([d.id]);
+
+                linkGroup.style('opacity', l => {
+                    if (l.source.id === d.id || l.target.id === d.id) {
+                        connected.add(l.source.id); connected.add(l.target.id);
+                        return 1.0;
+                    }
+                    return 0.05;
+                });
+                link.attr("marker-end", l => (l.source.id === d.id || l.target.id === d.id) ? "url(#arrowhead)" : "url(#arrowhead-dimmed)");
+                node.style('opacity', n => connected.has(n.id) ? 1.0 : 0.1).classed('active-node', n => n.id === d.id);
+            })
+            .on('mouseover', (event, d) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.innerHTML = `<strong>${d.fullTitle.substring(0, 60)}${d.fullTitle.length > 60 ? '...' : ''}</strong><br><span style="color:#8b949e; font-size:10px;">Cites: ${d.citations} | Score: ${d.importance.toFixed(2)} | Year: ${d.year}</span>`;
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.pageX + 10 + 'px'; tooltip.style.top = event.pageY + 10 + 'px';
+            })
+            .on('mousemove', (e) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY + 10 + 'px';
+            })
+            .on('mouseout', () => document.getElementById('tooltip').style.display = 'none');
+
+        // Prevent overlay clicks from deselecting nodes
+        d3.select('#overlay-controls').on('click', (e) => {
+            e.stopPropagation();
+        });
+
+        d3.select('#color-mode').on('change', function () {
+            const mode = this.value;
+            const isYear = mode === 'year';
+
+            node.transition().duration(750)
+                .attr('fill', d => {
+                    if (d.is_core || d.is_secondary) return (d.importance === 999) ? '#fcde9c' : '#eb4a40';
+                    return colorScale(isYear ? d.year_color_val : d.imp_color_val);
+                });
+
+            document.getElementById('legend-min').textContent = isYear ? 'Oldest' : 'Lower Score';
+            document.getElementById('legend-max').textContent = isYear ? 'Newest' : 'Higher Score';
+        });
+
+        svg.on('click', () => {
+            document.getElementById('info').classList.remove('active');
+            document.getElementById('sidebar-placeholder').style.display = 'block';
+            node.style('opacity', 1.0).classed('active-node', false);
+            linkGroup.style('opacity', 1.0);
+            link.attr('marker-end', "url(#arrowhead)");
+        });
+
+        simulation.on('tick', () => {
+            link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                .attr('x2', d => {
+                    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0) return d.target.x;
+                    return d.source.x + dx * (distance - d.target.size) / distance;
+                })
+                .attr('y2', d => {
+                    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0) return d.target.y;
+                    return d.source.y + dy * (distance - d.target.size) / distance;
+                });
+            node.attr('cx', d => d.x).attr('cy', d => d.y);
+        });
+
+        function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+        function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+        function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+        function showInfo(d) {
+            document.getElementById('sidebar-placeholder').style.display = 'none';
+            document.getElementById('title').textContent = d.fullTitle;
+            document.getElementById('authors').textContent = d.authors.join(', ') || 'Unknown';
+            document.getElementById('year').textContent = d.year;
+            document.getElementById('journal').textContent = d.journal;
+            document.getElementById('citations').textContent = d.citations;
+            document.getElementById('importance').textContent = d.importance === 999 ? 'SEED' : d.importance.toFixed(2);
+            let roleText = 'Peripheral';
+            if (d.importance === 999) roleText = 'Core (Initial)';
+            else if (d.is_secondary) roleText = 'Core (Secondary)';
+            document.getElementById('role').textContent = roleText;
+            const doiLink = document.getElementById('doi-link');
+            doiLink.href = `https://doi.org/${d.id}`; doiLink.textContent = d.id;
+            document.getElementById('info').classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

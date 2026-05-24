@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citation Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+
+        #network {
+            flex: 1;
+            position: relative;
+        }
+
+        /* [NEW] Floating Overlay Controls */
+        #overlay-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 260px;
+            background: rgba(22, 27, 34, 0.85);
+            /* Semi-transparent dark background */
+            backdrop-filter: blur(6px);
+            /* Frosted glass effect */
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar {
+            width: 310px;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            padding: 20px 15px 20px 20px;
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        #info-container {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            padding-right: 5px;
+        }
+
+        #info {
+            display: none;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        #info.active {
+            display: block;
+        }
+
+        .paper-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .paper-meta {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        .meta-row {
+            margin-bottom: 6px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            display: inline-block;
+            width: 80px;
+        }
+
+        .meta-value {
+            color: #79c0ff;
+        }
+
+        .doi-link {
+            color: #79c0ff;
+            text-decoration: none;
+            word-break: break-all;
+            font-size: 11px;
+        }
+
+        .doi-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Updated UI Controls for Overlay */
+        .control-group {
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            color: #8b949e;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background: #0d1117;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            padding: 6px;
+            width: 100%;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:hover {
+            border-color: #79c0ff;
+        }
+
+        .color-scale {
+            padding-top: 15px;
+            border-top: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        .scale-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .legend-text {
+            font-size: 12px;
+            color: #e6edf3;
+        }
+
+        .scale-bar {
+            height: 16px;
+            background: linear-gradient(to left, #D1EEEAFF, #A8DBD9FF, #85C4C9FF, #68ABB8FF, #4F90A6FF, #3B738FFF, #2A5674FF);
+            border-radius: 3px;
+            margin-bottom: 5px;
+            margin-top: 12px;
+        }
+
+        .scale-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #30363d;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            min-height: 40px;
+        }
+
+        .stats-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .stats-header:hover {
+            color: #e6edf3;
+        }
+
+        .stats-content {
+            margin-top: 15px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+        }
+
+        .stats-content.active {
+            display: flex;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .stat-label {
+            color: #8b949e;
+        }
+
+        .stat-value {
+            color: #e6edf3;
+            font-weight: 500;
+            text-align: right;
+            max-width: 50%;
+            word-break: break-word;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b949e;
+        }
+
+        svg {
+            background: #0d1117;
+        }
+
+        circle {
+            cursor: pointer;
+            transition: opacity 0.3s, filter 0.3s;
+        }
+
+        circle:hover,
+        circle.active-node {
+            stroke: #ffffff !important;
+            stroke-width: 2px !important;
+            filter: brightness(1.2);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #161b22;
+            padding: 8px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 250px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .link-group {
+            transition: opacity 0.3s;
+        }
+
+        line {
+            stroke: #5c646c;
+            stroke-opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="network">
+
+            <div id="overlay-controls">
+                <div class="control-group">
+                    <label for="color-mode">Peripheral Color Mapping</label>
+                    <select id="color-mode">
+                        <option value="importance" selected>Score (Default)</option>
+                        <option value="year">Publication Year</option>
+                    </select>
+                </div>
+
+                <div class="color-scale">
+                    <div class="scale-label">Node Roles & Timeline</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f3e79b;"></div>
+                        <div class="legend-text">Initial Core</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #eb4a40;"></div>
+                        <div class="legend-text">Secondary Core</div>
+                    </div>
+
+                    <div class="scale-bar"></div>
+                    <div class="scale-text">
+                        <span id="legend-min">Lower Score</span>
+                        <span id="legend-max">Higher Score</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="sidebar">
+            <div id="info-container">
+                <div id="info">
+                    <div class="paper-title" id="title"></div>
+                    <div class="paper-meta">
+                        <div class="meta-row"><span class="meta-label">Authors:</span><span id="authors"></span></div>
+                        <div class="meta-row"><span class="meta-label">Year:</span><span class="meta-value"
+                                id="year"></span></div>
+                        <div class="meta-row"><span class="meta-label">Journal:</span><span id="journal"></span></div>
+                        <div class="meta-row"><span class="meta-label">Citations:</span><span class="meta-value"
+                                id="citations"></span></div>
+                        <div class="meta-row"><span class="meta-label">Score:</span><span class="meta-value"
+                                id="importance"></span></div>
+                        <div class="meta-row"><span class="meta-label">Role:</span><span class="meta-value"
+                                id="role"></span></div>
+                        <div class="meta-row"><span class="meta-label">DOI:</span><a class="doi-link" id="doi-link"
+                                target="_blank"></a></div>
+                    </div>
+                </div>
+
+                <div id="sidebar-placeholder"
+                    style="color: #8b949e; font-size: 13px; text-align: center; margin-top: 40px; padding: 20px;">
+                    Click any node in the network to view its publication details here.
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stats-header" id="stats-header">
+                    <span>Run Statistics</span>
+                    <span id="stats-chevron">▼</span>
+                </div>
+                <div class="stats-content" id="stats-content">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const nodes = __NODES_JSON__;
+        const links = __LINKS_JSON__;
+        const stats = __STATS_JSON__;
+
+        const statsContent = document.getElementById('stats-content');
+        for (const [key, value] of Object.entries(stats)) {
+            const row = document.createElement('div');
+            row.className = 'stat-row';
+            row.innerHTML = `<span class="stat-label">${key}</span><span class="stat-value">${value}</span>`;
+            statsContent.appendChild(row);
+        }
+
+        const statsHeader = document.getElementById('stats-header');
+        statsHeader.addEventListener('click', () => {
+            statsContent.classList.toggle('active');
+            document.getElementById('stats-chevron').textContent = statsContent.classList.contains('active') ? '▲' : '▼';
+
+            if (statsContent.classList.contains('active')) {
+                setTimeout(() => {
+                    document.getElementById('sidebar').scrollTo({ top: document.getElementById('sidebar').scrollHeight, behavior: 'smooth' });
+                }, 50);
+            }
+        });
+
+        // ------------------ D3 VISUALIZATION ------------------
+        const width = document.getElementById('network').clientWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select('#network').append('svg').attr('width', width).attr('height', height);
+        const g = svg.append('g');
+
+        svg.call(d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => g.attr('transform', e.transform)));
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto")
+            .attr("markerWidth", 8).attr("markerHeight", 8).attr("xoverflow", "visible")
+            .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#5c646c").style("stroke", "none");
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead-dimmed").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto")
+            .attr("markerWidth", 8).attr("markerHeight", 8).attr("xoverflow", "visible")
+            .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#5c646c").attr("fill-opacity", "0.05").style("stroke", "none");
+
+        const maxWeight = Math.max(1, d3.max(links, d => d.weight) || 1);
+
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id)
+                .distance(d => {
+                    const norm = Math.log1p(d.weight) / Math.log1p(maxWeight);
+                    return 80 - (norm * 60);
+                })
+                .strength(d => {
+                    const norm = Math.log1p(d.weight) / Math.log1p(maxWeight);
+                    return 0.05 + (norm * 0.25);
+                })
+            )
+            .force('charge', d3.forceManyBody().strength(-500).distanceMax(400))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => d.size + 10));
+
+        const linkGroup = g.selectAll('.link-group').data(links).enter().append('g').attr('class', 'link-group');
+        const link = linkGroup.append('line').attr("marker-end", "url(#arrowhead)");
+
+        const colorScale = d3.scaleLinear()
+            .domain([1, 0.83, 0.66, 0.5, 0.33, 0.16, 0])
+            .range(['#D1EEEAFF', '#A8DBD9FF', '#85C4C9FF', '#68ABB8FF', '#4F90A6FF', '#3B738FFF', '#2A5674FF']);
+
+        const node = g.selectAll('circle').data(nodes).enter().append('circle')
+            .attr('r', d => d.size)
+            .attr('fill', d => {
+                if (d.importance === 999) return '#fcde9c';
+                if (d.is_secondary) return '#eb4a40';
+                return colorScale(d.imp_color_val);
+            })
+            .attr('stroke', '#30363d').attr('stroke-width', 1)
+            .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended))
+
+            .on('click', (event, d) => {
+                event.stopPropagation();
+                showInfo(d);
+                const connected = new Set([d.id]);
+
+                linkGroup.style('opacity', l => {
+                    if (l.source.id === d.id || l.target.id === d.id) {
+                        connected.add(l.source.id); connected.add(l.target.id);
+                        return 1.0;
+                    }
+                    return 0.05;
+                });
+                link.attr("marker-end", l => (l.source.id === d.id || l.target.id === d.id) ? "url(#arrowhead)" : "url(#arrowhead-dimmed)");
+                node.style('opacity', n => connected.has(n.id) ? 1.0 : 0.1).classed('active-node', n => n.id === d.id);
+            })
+            .on('mouseover', (event, d) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.innerHTML = `<strong>${d.fullTitle.substring(0, 60)}${d.fullTitle.length > 60 ? '...' : ''}</strong><br><span style="color:#8b949e; font-size:10px;">Cites: ${d.citations} | Score: ${d.importance.toFixed(2)} | Year: ${d.year}</span>`;
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.pageX + 10 + 'px'; tooltip.style.top = event.pageY + 10 + 'px';
+            })
+            .on('mousemove', (e) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY + 10 + 'px';
+            })
+            .on('mouseout', () => document.getElementById('tooltip').style.display = 'none');
+
+        // Prevent overlay clicks from deselecting nodes
+        d3.select('#overlay-controls').on('click', (e) => {
+            e.stopPropagation();
+        });
+
+        d3.select('#color-mode').on('change', function () {
+            const mode = this.value;
+            const isYear = mode === 'year';
+
+            node.transition().duration(750)
+                .attr('fill', d => {
+                    if (d.is_core || d.is_secondary) return (d.importance === 999) ? '#fcde9c' : '#eb4a40';
+                    return colorScale(isYear ? d.year_color_val : d.imp_color_val);
+                });
+
+            document.getElementById('legend-min').textContent = isYear ? 'Oldest' : 'Lower Score';
+            document.getElementById('legend-max').textContent = isYear ? 'Newest' : 'Higher Score';
+        });
+
+        svg.on('click', () => {
+            document.getElementById('info').classList.remove('active');
+            document.getElementById('sidebar-placeholder').style.display = 'block';
+            node.style('opacity', 1.0).classed('active-node', false);
+            linkGroup.style('opacity', 1.0);
+            link.attr('marker-end', "url(#arrowhead)");
+        });
+
+        simulation.on('tick', () => {
+            link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                .attr('x2', d => {
+                    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0) return d.target.x;
+                    return d.source.x + dx * (distance - d.target.size) / distance;
+                })
+                .attr('y2', d => {
+                    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0) return d.target.y;
+                    return d.source.y + dy * (distance - d.target.size) / distance;
+                });
+            node.attr('cx', d => d.x).attr('cy', d => d.y);
+        });
+
+        function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+        function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+        function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+        function showInfo(d) {
+            document.getElementById('sidebar-placeholder').style.display = 'none';
+            document.getElementById('title').textContent = d.fullTitle;
+            document.getElementById('authors').textContent = d.authors.join(', ') || 'Unknown';
+            document.getElementById('year').textContent = d.year;
+            document.getElementById('journal').textContent = d.journal;
+            document.getElementById('citations').textContent = d.citations;
+            document.getElementById('importance').textContent = d.importance === 999 ? 'SEED' : d.importance.toFixed(2);
+            let roleText = 'Peripheral';
+            if (d.importance === 999) roleText = 'Core (Initial)';
+            else if (d.is_secondary) roleText = 'Core (Secondary)';
+            document.getElementById('role').textContent = roleText;
+            const doiLink = document.getElementById('doi-link');
+            doiLink.href = `https://doi.org/${d.id}`; doiLink.textContent = d.id;
+            document.getElementById('info').classList.add('active');
+        }
+    </script>
+</body>
+
+</html>
