@@ -1,11 +1,22 @@
 ![](assets/img/banner.png)
 
-# Citation Network Visualizer
+# Citation Network Constructor
 
 An automated pipeline that constructs, filters, and visualizes thematically interconnected academic publication networks using DOIs and network techniques. Built in Python and D3.js. Find real articles, no LLM hallucination. 
 
-<!-- ## Highlights  -->
-<!-- ![](assets/img/demo-1.png) -->
+Try the [demo](https://zzzhehao.github.io/citation-network/SIA_network.html).
+
+## How Does it Work
+
+The input is really simple. A few paper DOIs from the topic you are trying to get into, they are treated as the *initial core papers*. 
+
+The program looks at the publication citing, or cited by your inputs, they are called as the *peripheral papers*. The "importance" of the peripheral papers will be evaluated by how well they are connected with each others, especially to the cores. Potential *secondary core papers* might be assigned, and the process will be repeated for the new cores, until it finds no more new cores, or the maximum iteration is reached. 
+
+When the search is finished, the core and the most adjacent peripheral papers will be mapped into a network, hopefully showing you a bigger picture of the topic you are trying to get into. The network is visualized by D3.js, so you can click on them, take a look at the basic metadata, or go read them. 
+
+I find the most valuable use of this is to find the real "cores" of the topic from just a few input papers. And to find more papers using that knowledge further. 
+
+![](assets/img/demo-1.png)
 
 ## Get Started
 
@@ -40,7 +51,7 @@ An automated pipeline that constructs, filters, and visualizes thematically inte
 
 ### Input Methods
 
-You must provide seed DOIs using ONE of the following methods:
+You must provide seed DOIs using one of the following methods:
 
 * **Positional Arguments:** Provide DOIs separated by spaces.
   ```shell
