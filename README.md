@@ -10,9 +10,9 @@ Try the [demo](https://zzzhehao.github.io/citation-network/SIA_network.html).
 
 The input is really simple. A few paper DOIs from the topic you are trying to get into, they are treated as the *initial core papers*. 
 
-The program looks at the publication citing, or cited by your inputs, they are called as the *peripheral papers*. The "importance" of the peripheral papers will be evaluated by how well they are connected with each others, especially to the cores. Potential *secondary core papers* might be assigned, and the process will be repeated for the new cores, until it finds no more new cores, or the maximum iteration is reached. 
+The program looks at the publications cited by your inputs, which are called the *peripheral papers*. The "importance" of the peripheral papers will be evaluated by how well they are connected to the cores. Potential *secondary core papers* may be assigned, and the process will be repeated for the new cores until no more are found or the maximum number of iterations is reached. 
 
-When the search is finished, the core and the most adjacent peripheral papers will be mapped into a network, hopefully showing you a bigger picture of the topic you are trying to get into. The network is visualized by D3.js, so you can click on them, take a look at the basic metadata, or go read them. 
+When the search is finished, the core and most adjacent peripheral papers will be mapped into a network, hopefully providing a bigger picture of the topic you are trying to get into. The network is visualized with D3.js, so you can click on them to view basic metadata or read them. 
 
 I find the most valuable use of this is to find the real "cores" of the topic from just a few input papers. And to find more papers using that knowledge further. 
 
@@ -84,27 +84,36 @@ python3 main.py -i example.bib --recursive-threshold 0.15 --penalty-factor 0.5 -
 
 ### Export & Output Settings
 
-* **--run-name**: Customize the basename of output files.
-* **--output-dir**: Defines the folder where results are saved. *Default: ./output*.
-* **--no-csv**: Skip exporting the `publications.csv` file.
-* **--no-json**: Skip exporting the raw `network.json` data structure.
+
+| Option         | Description                                                      | Default       | Value |
+| -------------- | ---------------------------------------------------------------- | ------------- | ----- |
+| `--run-name`   | Customize the basename of output files                           | yyyyMMDD_hhmm | *Any* |
+| `--output-dir` | Defines the folder where results are saved                       | `./output`    | *Any* |
+| `--no-csv`     | Skip exporting the csv file containing all scrapped publications | *N/A*         | *N/A* |
+| `--no-json`    | Skip exporting the raw json network structure                    | *N/A*         | *N/A* |
+
 
 ### Network Filtering & API Parameters
 
-* **--min-year**: Drops any publication published before this year. *Default: 2000*
-* **--max-results**: The maximum number of cited/citing papers to request per API call per seed paper. Exhaustive searches cause massive API rate-limiting and generate cluttered graphs. Capping this targets the most relevant connections. *Default: 50*
-* **--network-filter**: Controls how stronly the peripheral papers are filtered out in final graphs. *Default: 0.2*.
+| Option               | Description                                                                                                                                                                                                                  | Default | Value     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | --------- |
+| `--min-year`         | Drops any publication published before this year                                                                                                                                                                             | 2000    | *Integer* |
+| `--max-results`      | The maximum number of cited/citing papers to request per API call per core paper. Exhaustive searches may cause massive API rate-limiting and generate cluttered graphs. Capping this targets the most relevant connections. | 50      | *Integer* |
+| `--force-large-core` | By default, the program stops if you provide >50 initial seed papers to prevent API bans. Use this flag to override the safeguard.                                                                                           | *N/A*   | *N/A*     |
+| `--network-filter`   | Controls how strongly the peripheral papers are filtered out in the final graphs. Higher values increase the score threshold for a peripheral to be included.                                                                | 0.2     | *Float*   |
 
 ### Recursive Expansion Logic
 
-The tool recursively expands its search by turning highly interconnected peripheral papers into "Secondary Core" papers and deep-scraping their references. The algorithm evaluates a candidate paper's "Score" based on its topology:
+The tool recursively expands its search by turning highly interconnected peripheral papers into "Secondary Core" papers and deep-scraping their references. The algorithm evaluates a candidate paper's "Score" based on its topology. 
 
-* **--max-iterations**: How many deep-dive cycles the scraper should run. *Default: 5* 
-* **--peripheral-vote**: The fractional score contribution of a non-core (peripheral) edge. Allows clusters of peripheral papers to surface a secondary core paper. *Default: 0.5*
-* **--recursive-threshold**: The baseline percentage of the *current* core network that a candidate paper's score must exceed to be upgraded to a Secondary Core paper. *Default: 0.25 (25%)*
-* **--penalty-factor**: Applies an asymptotic decay curve to prevent a "snowball effect" explosion in later iterations. It determines how much of the remaining gap to 100% is available after each iteration. *Default: 0.2 (20%)* 
-* **--core-award**: Apply extra points for peripheral papers connected to core papers based on the core paper's score. *Default: 0.05, must be in range 0 - 0.2*
-* **--force-large-core**: By default, the program stops if you provide >50 initial seed papers to prevent API bans. Use this flag to override the safeguard. 
+| Option                  | Description                                                                                                                                                                            | Default | Value           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | --------------- |
+| `--max-iterations`      | How many deep-dive cycles the scraper should run.                                                                                                                                      | 5       | *Integer*       |
+| `--peripheral-vote`     | The fractional score contribution of a non-core (peripheral) edge. Allows clusters of peripheral papers to surface a secondary core paper.                                             | 0.5     | *Float*         |
+| `--recursive-threshold` | The baseline percentage of the *current* core network that a candidate paper's score must exceed to be upgraded to a Secondary Core paper.                                             | 0.25    | *Float*         |
+| `--penalty-factor`      | Applies an asymptotic decay curve to prevent a "snowball effect" explosion in later iterations. It determines how much of the remaining gap to 100% is available after each iteration. | 0.2     | *Float*         |
+| `--core-award`          | Apply extra points for peripheral papers connected to core papers based on the core paper's score. Adjust this value carefully.                                                        | 0.05    | *Float* (0-0.2) |
+
 
 In general, if you want to find as many papers as you can, try to increase --penalty-factor, --core-award, or decrease --recursive-threshold. If the program complained about finding too many new cores, try to decrease --core-award, --penalty-factor, or increase --recursive-threshold. 
 
@@ -114,6 +123,8 @@ Generally, I recommend starting with the default values and adjusting them based
 
 ### Display & Developer Flags
 
-* **--no-report**: Disables the statistical operational report printed in the terminal.
-* **--verbose**: Enables diagnostic Python logging.
-* **--debug**: Enables a local SQLite cache (`requests-cache`). API responses will be saved locally for 7 days so repeated runs execute instantly.
+| Option        | Description                                                          |
+| ------------- | -------------------------------------------------------------------- |
+| `--no-report` | Disables the statistical operational report printed in the terminal. |
+| `--verbose`   | Enables diagnostic Python logging.                                   |
+| `--no-cache`  | Disables generating and using cached citation metrics.               |
