@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "citenet"
+version = "0.1.0"
+description = "Citation Network Constructor"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "requests>=2.31.0",
+    "bibtexparser>=1.4.1",
+    "tqdm>=4.66.0",
+    "requests-cache>=1.1.0"
+]
+
+[project.scripts]
+citenet = "citenet.main:main"
+
+[tool.setuptools.package-data]
+citenet = ["templates/*.html"]

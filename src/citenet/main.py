@@ -5,9 +5,9 @@ from pathlib import Path
 from datetime import datetime
 import bibtexparser
 
-from lit_nwk.doi_resolver import NetworkConfig, CitationNetworkBuilder
-from lit_nwk.aggregator import NetworkAggregator, DataExporter
-from lit_nwk.visualizer import NetworkVisualizer
+from citenet.doi_resolver import NetworkConfig, CitationNetworkBuilder
+from citenet.aggregator import NetworkAggregator, DataExporter
+from citenet.visualizer import NetworkVisualizer
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +113,13 @@ def main():
     if not args.no_cache:
         try:
             import requests_cache
+            from pathlib import Path
 
-            requests_cache.install_cache("citation_debug_cache", expire_after=604800)
+            CACHE_DIR = Path.home() / ".mytool_cache"
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            cache_name = str(CACHE_DIR / "citation_debug_cache")
+
+            requests_cache.install_cache(cache_name, expire_after=604800)
             logger.info("Local API cache is enabled.")
         except ImportError:
             logger.warning(

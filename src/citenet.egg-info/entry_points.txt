@@ -1,0 +1,2 @@
+[console_scripts]
+citenet = citenet.main:main

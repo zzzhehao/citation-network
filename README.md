@@ -32,32 +32,10 @@ Excessive scraping can lead to temporary or permanent IP blocking by these servi
 
 ### Installation
 
-1. Copy this repository:
-    ```shell
-    git clone https://github.com/zzzhehao/citation-network.git
-    ```
-2. Navigate to the repository directory:
-    ```shell
-    cd citation-network
-    ```
-3. Create a virtual environment: 
-    ```shell
-    python3 -m venv venv
-    ```
-4. Activate it: 
-
-   Mac/Linux:
-    ```shell
-    source venv/bin/activate
-    ```
-   Windows:
-    ```shell
-    venv\Scripts\activate
-    ```
-5. Install dependencies: 
-    ```shell
-    pip install -r requirements.txt
-    ```
+1. Install from Github:
+```shell
+pip install git+https://github.com/zzzhehao/citation-network.git
+```
 
 ### Input Methods
 
@@ -65,21 +43,21 @@ You must provide seed DOIs using one of the following methods:
 
 * **Positional Arguments:** Provide DOIs separated by spaces.
   ```shell
-  python3 main.py 10.1038/nature12373 10.1038/ncomms11901
+  citenet 10.1038/nature12373 10.1038/ncomms11901
   ```
 * **--dois:** Provide DOIs as a single comma-separated string.
   ```shell
-  python3 main.py --dois "10.1038/nature12373,10.1038/ncomms11901"
+  citenet --dois "10.1038/nature12373,10.1038/ncomms11901"
   ```
 * **-i, --input:** Pass a `.txt` file (one DOI per line) or a `.bib` (BibTeX) file. 
   ```shell
-  python3 main.py -i my_papers.bib
+  citenet -i my_papers.bib
   ```
 
 ### Run the demo yourself
 
 ```python
-python3 main.py -i example.bib --recursive-threshold 0.15 --penalty-factor 0.5 --core-award 0.05
+citenet -i example.bib --recursive-threshold 0.15 --penalty-factor 0.5 --core-award 0.05
 ```
 
 ### Export & Output Settings

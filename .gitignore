@@ -1,5 +1,7 @@
 **.sqlite
 **/venv/
+**/__pycache__/
+*.pyc
 
 # Created by Zhehao Hu
 
