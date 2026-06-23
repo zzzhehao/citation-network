@@ -1,0 +1,14 @@
+LICENSE.md
+README.md
+pyproject.toml
+src/citenet/__init__.py
+src/citenet/aggregator.py
+src/citenet/doi_resolver.py
+src/citenet/main.py
+src/citenet/visualizer.py
+src/citenet.egg-info/PKG-INFO
+src/citenet.egg-info/SOURCES.txt
+src/citenet.egg-info/dependency_links.txt
+src/citenet.egg-info/entry_points.txt
+src/citenet.egg-info/requires.txt
+src/citenet.egg-info/top_level.txt
