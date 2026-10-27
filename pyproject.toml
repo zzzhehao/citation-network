@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "citenet"
-version = "0.1.1.0007"
+version = "0.1.1.0008"
 description = "Citation Network Constructor"
 readme = "README.md"
 requires-python = ">=3.14"
