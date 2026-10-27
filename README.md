@@ -4,7 +4,7 @@
 
 An automated pipeline that constructs, filters, and visualizes thematically interconnected academic publication networks using DOIs and network techniques. Built in Python and D3.js. Find real articles, no LLM hallucination. 
 
-Try the [demo](https://zzzhehao.github.io/citation-network/SIA_network.html).
+Try the [demo](https://zzzhehao.github.io/citation-network/index.html).
 
 ## How Does it Work
 

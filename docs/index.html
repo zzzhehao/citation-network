@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citation Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+
+        #network {
+            flex: 1;
+            position: relative;
+        }
+
+        /* [NEW] Floating Overlay Controls */
+        #overlay-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 260px;
+            background: rgba(22, 27, 34, 0.85);
+            /* Semi-transparent dark background */
+            backdrop-filter: blur(6px);
+            /* Frosted glass effect */
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar {
+            width: 310px;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            padding: 20px 15px 20px 20px;
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        #info-container {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            padding-right: 5px;
+        }
+
+        #info {
+            display: none;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        #info.active {
+            display: block;
+        }
+
+        .paper-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .paper-meta {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        .meta-row {
+            margin-bottom: 6px;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            display: inline-block;
+            width: 80px;
+        }
+
+        .meta-value {
+            color: #79c0ff;
+        }
+
+        .doi-link {
+            color: #79c0ff;
+            text-decoration: none;
+            word-break: break-all;
+            font-size: 11px;
+        }
+
+        .doi-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Updated UI Controls for Overlay */
+        .control-group {
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            color: #8b949e;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background: #0d1117;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            padding: 6px;
+            width: 100%;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:hover {
+            border-color: #79c0ff;
+        }
+
+        .color-scale {
+            padding-top: 15px;
+            border-top: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        .scale-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .legend-text {
+            font-size: 12px;
+            color: #e6edf3;
+        }
+
+        .scale-bar {
+            height: 16px;
+            background: linear-gradient(to left, #D1EEEAFF, #A8DBD9FF, #85C4C9FF, #68ABB8FF, #4F90A6FF, #3B738FFF, #2A5674FF);
+            border-radius: 3px;
+            margin-bottom: 5px;
+            margin-top: 12px;
+        }
+
+        .scale-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #30363d;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            min-height: 40px;
+        }
+
+        .stats-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .stats-header:hover {
+            color: #e6edf3;
+        }
+
+        .stats-content {
+            margin-top: 15px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+        }
+
+        .stats-content.active {
+            display: flex;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .stat-label {
+            color: #8b949e;
+        }
+
+        .stat-value {
+            color: #e6edf3;
+            font-weight: 500;
+            text-align: right;
+            max-width: 50%;
+            word-break: break-word;
+        }
+
+        /* User List Panel */
+        .user-list-panel {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .user-list-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #8b949e;
+            color: #ffffff;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .export-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .export-controls select {
+            flex: 2;
+        }
+
+        .export-controls .btn {
+            flex: 1;
+        }
+
+        /* Saved List Items Display */
+        .saved-list-container {
+            margin-top: 15px;
+            border-top: 1px solid #30363d;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .saved-list-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .saved-list-header:hover {
+            color: #e6edf3;
+        }
+
+        .saved-list-content {
+            margin-top: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .saved-list-content.active {
+            display: flex;
+        }
+
+        .saved-list-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .saved-list-item:hover {
+            border-color: #79c0ff;
+        }
+
+        .saved-list-item-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #e6edf3;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .saved-list-item-meta {
+            font-size: 10px;
+            color: #8b949e;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b949e;
+        }
+
+        svg {
+            background: #0d1117;
+        }
+
+        circle {
+            cursor: pointer;
+            transition: opacity 0.3s, filter 0.3s;
+        }
+
+        circle:hover,
+        circle.active-node {
+            stroke: #ffffff !important;
+            stroke-width: 2px !important;
+            filter: brightness(1.2);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: #161b22;
+            padding: 8px 12px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 250px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .link-group {
+            transition: opacity 0.3s;
+        }
+
+        line {
+            stroke: #5c646c;
+            stroke-opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div id="network">
+
+            <div id="overlay-controls">
+                <div class="control-group">
+                    <label for="color-mode">Peripheral Color Mapping</label>
+                    <select id="color-mode">
+                        <option value="importance" selected>Score (Default)</option>
+                        <option value="year">Publication Year</option>
+                    </select>
+                </div>
+
+                <div class="color-scale">
+                    <div class="scale-label">Node Roles & Timeline</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f3e79b;"></div>
+                        <div class="legend-text">Initial Core</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #eb4a40;"></div>
+                        <div class="legend-text">Secondary Core</div>
+                    </div>
+
+                    <div class="scale-bar"></div>
+                    <div class="scale-text">
+                        <span id="legend-min">Lower Score</span>
+                        <span id="legend-max">Higher Score</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="sidebar">
+            <div id="info-container">
+                <div id="info">
+                    <div class="paper-title" id="title"></div>
+                    <div class="paper-meta">
+                        <div class="meta-row"><span class="meta-label">Authors:</span><span id="authors"></span></div>
+                        <div class="meta-row"><span class="meta-label">Year:</span><span class="meta-value"
+                                id="year"></span></div>
+                        <div class="meta-row"><span class="meta-label">Journal:</span><span id="journal"></span></div>
+                        <div class="meta-row"><span class="meta-label">Citations:</span><span class="meta-value"
+                                id="citations"></span></div>
+                        <div class="meta-row"><span class="meta-label">Score:</span><span class="meta-value"
+                                id="importance"></span></div>
+                        <div class="meta-row"><span class="meta-label">Role:</span><span class="meta-value"
+                                id="role"></span></div>
+                        <div class="meta-row"><span class="meta-label">DOI:</span><a class="doi-link" id="doi-link"
+                                target="_blank"></a></div>
+                        <div class="meta-row">
+                            <span class="meta-label" style="display: block; margin-bottom: 4px;">Abstract:</span>
+                            <span class="meta-value" id="abstract"
+                                style="display: block; font-size: 11px; color: #8b949e; line-height: 1.4; max-height: 200px; overflow-y: auto; text-align: justify;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sidebar-placeholder"
+                    style="color: #8b949e; font-size: 13px; text-align: center; margin-top: 40px; padding: 20px;">
+                    Click any node in the network to view its publication details here.
+                </div>
+            </div>
+
+            <div class="user-list-panel">
+                <div class="user-list-header">User Saved Papers (<span id="user-list-count">0</span>)</div>
+                <button id="btn-add-list" class="btn" disabled>Add Selected Paper</button>
+            
+                <div class="export-controls">
+                    <select id="export-format">
+                        <option value="csv">Export as CSV</option>
+                        <option value="bibtex">Export as BibTeX</option>
+                        <option value="doi_txt">DOI only (.txt)</option>
+                        <option value="doi_clipboard">DOI only (Clipboard)</option>
+                        <option value="apa_txt">APA 7 (.txt)</option>
+                        <option value="apa_clipboard">APA 7 (Clipboard)</option>
+                    </select>
+                    <button id="btn-export-list" class="btn">Export</button>
+                </div>
+
+                <div class="saved-list-container">
+                    <div class="saved-list-header" id="saved-list-header">
+                        <span>View Saved Papers</span>
+                        <span id="saved-list-chevron">▼</span>
+                    </div>
+                    <div class="saved-list-content" id="saved-list-content">
+                        <!-- Saved items will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stats-header" id="stats-header">
+                    <span>Run Statistics</span>
+                    <span id="stats-chevron">▼</span>
+                </div>
+                <div class="stats-content" id="stats-content">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        const nodes = [{"id": "10.3354/meps15107", "title": "Trophic ecology of cephalopod paralarvae in the Sa...", "size": 10, "citations": 0, "importance": 999.0, "imp_color_val": 106.61021505376345, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Golikov Alexey V.", "Vokhshoori Natasha"], "journal": "Marine Ecology Progress Series", "fullTitle": "Trophic ecology of cephalopod paralarvae in the Sargasso Sea revealed from compound-specific stable isotope analysis of amino acids (\u03b413C and \u03b415N)", "is_secondary": false, "is_core": true, "abstract": "Cephalopod paralarvae are an abundant and globally widespread component of marine zooplankton, whose trophic ecology is not yet well understood. Here, we applied compound-specific stable isotope analyses of amino acids (CSIA-AA) to paralarvae of oceanic squids (Oegopsida) collected in 2015 in the Sargasso Sea to understand their ecological role in the food web. Paralarvae were divided into 5 morpho-functional groups: Onychoteuthidae, enoploteuthids (3 families), Ommastrephidae, Cranchiidae and chiroteuthids (2 families). We hypothesized that paralarvae of Onychoteuthidae and enoploteuthids with adult-like morphologies occupy trophic positions (TPs) and niche spaces (estimated from \u03b4 15 N AA and \u03b4 13 C AA , respectively) distinct from each other, and even more so from Ommastrephidae rhynchoteuthions and ammoniacal Cranchiidae and chiroteuthids with their distinctive morphologies. TP was the highest in Onychoteuthidae and enoploteuthids (2.7-3.4), intermediate in Ommastrephidae and chiroteuthids (2.5-2.9), and lowest in Cranchiidae (1.6-2.3). Onychoteuthidae and enoploteuthids are significantly different in centroids of \u03b4 13 C AA niche spaces. However, probabilistic measures of niche overlap reveal substantial dietary overlap (52-67%), indicating that significant differences in group means do not necessarily reflect complete ecological separation. Moreover, these paralarvae with adult-like morphologies seem to rapidly assume ecological roles akin to adults of these taxa. Ammoniacal paralarvae of Cranchiidae and chiroteuthids are the most distinct in AA composition from other taxa. TP of Cranchiidae was lower than expected, possibly due to ammonium altering \u03b4 15 N AA fractionation. This study provides the first CSIA-AA evidence of trophic differentiation among oceanic squid paralarvae, addressing a critical gap in understanding early life-phase ecology of cephalopods."}, {"id": "10.1007/s00227-013-2284-7", "title": "The tongue-replacing isopod Cymothoa borbonica red...", "size": 12.723455672035186, "citations": 22, "importance": 999.0, "imp_color_val": 106.61021505376345, "year_color_val": 0.48148148148148145, "year": 2013, "authors": ["Parker D.", "Booth A. J."], "journal": "Marine Biology", "fullTitle": "The tongue-replacing isopod Cymothoa borbonica reduces the growth of largespot pompano Trachinotus botla", "is_secondary": false, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1080/02705060.2007.9665055", "title": "Trophic Relationship between the Parasitic IsopodI...", "size": 12.15836249209525, "citations": 11, "importance": 999.0, "imp_color_val": 106.61021505376345, "year_color_val": 0.25925925925925924, "year": 2007, "authors": ["Xu Jun", "Zhang Min"], "journal": "Journal of Freshwater Ecology", "fullTitle": "Trophic Relationship between the Parasitic IsopodIchthyoxenus japonensisand the FishCarassius auratus auratusAs Revealed by Stable Isotopes", "is_secondary": false, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1111/1365-2435.13530", "title": "Trophic selectivity in aquatic isopods increases w...", "size": 12.684845361644413, "citations": 21, "importance": 999.0, "imp_color_val": 106.61021505376345, "year_color_val": 0.7407407407407407, "year": 2020, "authors": ["Francois Cl\u00e9mentine M.", "Simon Laurent"], "journal": "Functional Ecology", "fullTitle": "Trophic selectivity in aquatic isopods increases with the availability of resources", "is_secondary": false, "is_core": true, "abstract": "Abstract Trophic selectivity has major influences on consumers\u2019 fitness, stability of predator and prey populations, and nutrient fluxes in food webs. Trophic selectivity occurs when the relative abundances of resources in a consumer's diet differ from their relative abundances in the environment. This discrepancy between resources abundance and use has been predicted to increase with the availability of resources in the environment. Trophic selectivity has also been predicted to increase with the heterogeneity of resources quality in the environment. Despite their ecological and evolutionary implications, conclusive in situ tests of these predictions are still lacking. We challenged these two predictions by studying 15 closely related species of isopods distributed along a wide range of resource availability (RA) (from 1.3 to 57.6 g of organic carbon per m2). The dataset ranged from deep cave systems, considered as some of the most resource\u2010limited environments on Earth, to highly productive surface streams. For each species, we quantified the relative abundance of all available resources in the environment and estimated the heterogeneity in the stoichiometric quality of these resources. Isopod diet was determined using C and N stable isotopes and a Bayesian mixing model. The degree of trophic selectivity was then calculated for each species. By coupling a standardized quantification of trophic resources with a fine determination of diets using stable isotopes, we uncovered a positive relationship between RA and trophic selectivity. In contrast to our second prediction, trophic selectivity did not correlate with the heterogeneity of resources quality. Our results have important implications in trophic ecology by highlighting that RA was a main driver of trophic choices in aquatic invertebrates across a broad range of environments. These findings call for further evaluation of the mechanisms (e.g. trophic competition) causing the positive relationship between trophic selectivity and RA, as these mechanisms could be closely linked to those generating the documented relationship between species richness and productive energy. A free Plain Language Summary can be found within the Supporting Information of this article."}, {"id": "10.1007/s00442-003-1415-0", "title": "Sulfur stable isotopes separate producers in marin...", "size": 14.656759206877474, "citations": 212, "importance": 999.0, "imp_color_val": 106.61021505376345, "year_color_val": 0.14814814814814814, "year": 2004, "authors": ["Connolly Rod M.", "Guest Michaela A."], "journal": "Oecologia", "fullTitle": "Sulfur stable isotopes separate producers in marine food-web analysis", "is_secondary": false, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1038/s41598-019-55719-1", "title": "The first global deep-sea stable isotope assessmen...", "size": 13.06295783408451, "citations": 33, "importance": 999.0, "imp_color_val": 106.61021505376345, "year_color_val": 0.7037037037037037, "year": 2019, "authors": ["A. Golikov", "F. Ceia"], "journal": "Scientific Reports", "fullTitle": "The first global deep-sea stable isotope assessment reveals the unique trophic ecology of Vampire Squid Vampyroteuthis infernalis (Cephalopoda)", "is_secondary": false, "is_core": true, "abstract": "Vampyroteuthis infernalis Chun, 1903, is a widely distributed deepwater cephalopod with unique morphology and phylogenetic position. We assessed its habitat and trophic ecology on a global scale via stable isotope analyses of a unique collection of beaks from 104 specimens from the Atlantic, Pacific and Indian Oceans. Cephalopods typically are active predators occupying a high trophic level (TL) and exhibit an ontogenetic increase in \u03b415N and TL. Our results, presenting the first global comparison for a deep-sea invertebrate, demonstrate that V. infernalis has an ontogenetic decrease in \u03b415N and TL, coupled with niche broadening. Juveniles are mobile zooplanktivores, while larger Vampyroteuthis are slow-swimming opportunistic consumers and ingest particulate organic matter. Vampyroteuthis infernalis occupies the same TL (3.0\u20134.3) over its global range and has a unique niche in deep-sea ecosystems. These traits have enabled the success and abundance of this relict species inhabiting the largest ecological realm on the planet."}, {"id": "10.1146/annurev-ecolsys-102209-144726", "title": "On the Use of Stable Isotopes in Trophic Ecology", "size": 15, "citations": 965, "importance": 43.0, "imp_color_val": 3.8145161290322585, "year_color_val": 0.4074074074074074, "year": 2011, "authors": ["Boecklen William J.", "Yarnes Christopher T."], "journal": "Annual Review of Ecology, Evolution, and Systematics", "fullTitle": "On the Use of Stable Isotopes in Trophic Ecology", "is_secondary": true, "is_core": true, "abstract": "Stable isotope analysis (SIA) has proven to be a useful tool in reconstructing diets, characterizing trophic relationships, elucidating patterns of resource allocation, and constructing food webs. Consequently, the number of studies using SIA in trophic ecology has increased exponentially over the past decade. Several subdisciplines have developed, including isotope mixing models, incorporation dynamics models, lipid-extraction and correction methods, isotopic routing models, and compound-specific isotopic analysis. As with all tools, there are limitations to SIA. Chief among these are multiple sources of variation in isotopic signatures, unequal taxonomic and ecosystem coverage, over-reliance on literature values for key parameters, lack of canonical models, untested or unrealistic assumptions, low predictive power, and a paucity of experimental studies. We anticipate progress in SIA resulting from standardization of methods and models, calibration of model parameters through experimentation, and continued development of several recent approaches such as isotopic routing models and compound-specific isotopic analysis."}, {"id": "10.1002/9780470995310", "title": "Cephalopods", "size": 15, "citations": 387, "importance": 2.0, "imp_color_val": -0.5940860215053765, "year_color_val": 0.18518518518518517, "year": 2005, "authors": [], "journal": "Unknown", "fullTitle": "Cephalopods", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1098/rspb.2005.3115", "title": "Stable isotopes, beaks and predators: a new tool t...", "size": 14.380663396340584, "citations": 154, "importance": 34.5, "imp_color_val": 2.9005376344086025, "year_color_val": 0.18518518518518517, "year": 2005, "authors": ["Cherel Yves", "Hobson Keith A"], "journal": "Proceedings of the Royal Society B: Biological Sciences", "fullTitle": "Stable isotopes, beaks and predators: a new tool to study the trophic ecology of cephalopods, including giant and colossal squids", "is_secondary": true, "is_core": true, "abstract": "Cephalopods play a key role in the marine environment but knowledge of their feeding habits is limited by lack of data. Here, we have developed a new tool to investigate their feeding ecology by combining the use of their predators as biological samplers together with measurements of the stable isotopic signature of their beaks. Cephalopod beaks are chitinous hard structures that resist digestion and the stable isotope ratios of carbon (\u03b4 13 C) and nitrogen (\u03b4 15 N) are indicators of the foraging areas and trophic levels of consumers, respectively. First, a comparison of \u03b4 13 C and \u03b4 15 N values of different tissues from the same individuals showed that beaks were slightly enriched in 13 C but highly impoverished in 15 N compared with lipid-free muscle tissues. Second, beaks from the same species showed a progressive increase in their \u03b4 15 N values with increasing size, which is in agreement with a dietary shift from lower to higher trophic levels during cephalopod growth. In the same way, there was an increase in the \u03b4 15 N signature of various parts of the same lower beaks in the order rostrum, lateral walls and wings, which reflects the progressive growth and chitinization of the beaks in parallel with dietary changes. Third, we investigated the trophic structure of a cephalopod community for the first time. Values of \u03b4 15 N indicate that cephalopods living in slope waters of the subantarctic Kerguelen Islands ( n =18 species) encompass almost three distinct trophic levels, with a continuum of two levels between crustacean- and fish-eaters and a distinct higher trophic level occupied by the colossal squid Mesonychoteuthis hamiltoni . \u03b4 13 C values demonstrated that cephalopods grow in three different marine ecosystems, with 16 species living and developing in Kerguelen waters and two species migrating from either Antarctica ( Slosarczykovia circumantarctica ) or the subtropics (the giant squid Architeuthis dux ). The stable isotopic signature of beaks accumulated in predators' stomachs therefore revealed new trophic relationships and migration patterns and is a powerful tool to investigate the role of the poorly known cephalopods in the marine environment."}, {"id": "10.1098/rsbl.2009.0024", "title": "Stable isotopes document the trophic structure of ...", "size": 13.761627184561583, "citations": 75, "importance": 30.5, "imp_color_val": 2.470430107526882, "year_color_val": 0.3333333333333333, "year": 2009, "authors": ["Cherel Y.", "Ridoux V."], "journal": "Biology Letters", "fullTitle": "Stable isotopes document the trophic structure of a deep-sea cephalopod assemblage including giant octopod and giant squid", "is_secondary": true, "is_core": true, "abstract": "Although deep-sea cephalopods are key marine organims, their feeding ecology remains essentially unknown. Here, we report for the first time the trophic structure of an assemblage of these animals (19 species) by measuring the isotopic signature of wings of their lower beaks, which accumulated in stomachs of stranded sperm whales. Overall, the species encompassed a narrow range in \u03b4 13 C values (1.7\u2030), indicating that they lived in closely related and overlapping habitats. \u03b4 13 C values can be interpreted in terms of distribution with the more 13 C-depleted species (e.g. Stigmatoteuthis arcturi , Vampyroteuthis infernalis ) having a more pelagic habitat than the more 13 C-enriched, bathyal species (e.g. Todarodes sagittatus and the giant squid Architeuthis dux ). The cephalopods sampled had \u03b4 15 N values ranging 4.6\u2030, which is consistent with the species spanning approximately 1.5 trophic levels. Neither the giant octopod ( Haliphron atlanticus ) nor the giant squid reached the highest trophic position. Species \u03b4 15 N was independent of body size, with large squids having both the highest ( Taningia danae ) and lowest ( Lepidoteuthis grimaldii ) \u03b4 15 N values. Their trophic position indicates that some species share the top of the food web, together with other megacarnivores such as the sperm whale."}, {"id": "10.4319/lom.2009.7.740", "title": "Determination of aquatic food\u2010web structure based ...", "size": 15, "citations": 635, "importance": 28.0, "imp_color_val": 2.201612903225807, "year_color_val": 0.3333333333333333, "year": 2009, "authors": ["Chikaraishi Yoshito", "Ogawa Nanako O."], "journal": "Limnology and Oceanography: Methods", "fullTitle": "Determination of aquatic food\u2010web structure based on compound\u2010specific nitrogen isotopic composition of amino acids", "is_secondary": true, "is_core": true, "abstract": "The nitrogen isotopic composition (\u03b415N) of amino acids is potentially useful as an alternative method for estimating the trophic levels of organisms in food webs. However, because this \u201camino acid method\u201d has been constructed from the observations of only a few case studies of food\u2010consumer combinations in previous studies, the universality of the approach remains unclear. In this study, we investigated the \u03b415N signatures of amino acids in 17 photoautotrophs and the trophic relationships during four controlled feeding experiments using green algae, zooplankton, and fish. The results are consistent with those reported in previous studies, implying that the amino acid method can be applied to a variety of organisms. From these and previously published data, we estimate the two factors (\u03b2, isotope differences among amino acids in primary producers; \u0394, the 15N\u2010enrichment factor for each trophic level) required to calculate the trophic level. Based on the lowest error (1\u03c3 = 0.12) in the estimated trophic level, we conclude that a comparison of the \u03b415N values for glutamic acid and phenylalanine is most useful in calculating precise estimates of the trophic level, using the following equation: trophic level (TLGlu/Phe) = (\u03b415NGlu \u2212 \u03b415NPhe \u2212 3.4)/7.6 + 1."}, {"id": "10.1007/978-90-481-3354-3_14", "title": "Using Isoscapes to Trace the Movements and Foragin...", "size": 15, "citations": 326, "importance": 40.0, "imp_color_val": 3.4919354838709684, "year_color_val": 0.3333333333333333, "year": 2009, "authors": ["Graham Brittany S.", "Koch Paul L."], "journal": "Isoscapes", "fullTitle": "Using Isoscapes to Trace the Movements and Foraging Behavior of Top Predators in Oceanic Ecosystems", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1111/j.1365-2656.2011.01806.x", "title": "Comparing isotopic niche widths among and within c...", "size": 15, "citations": 2992, "importance": 44.5, "imp_color_val": 3.975806451612904, "year_color_val": 0.4074074074074074, "year": 2011, "authors": ["Jackson Andrew L.", "Inger Richard"], "journal": "Journal of Animal Ecology", "fullTitle": "Comparing isotopic niche widths among and within communities: SIBER - Stable Isotope Bayesian Ellipses in R", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "title": "CAN STABLE ISOTOPE RATIOS PROVIDE FOR COMMUNITY-WI...", "size": 15, "citations": 1530, "importance": 41.5, "imp_color_val": 3.6532258064516134, "year_color_val": 0.25925925925925924, "year": 2007, "authors": ["Layman Craig A.", "Arrington D. Albrey"], "journal": "Ecology", "fullTitle": "CAN STABLE ISOTOPE RATIOS PROVIDE FOR COMMUNITY-WIDE MEASURES OF TROPHIC STRUCTURE?", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1111/j.1469-185X.2011.00208.x", "title": "Applying stable isotopes to examine food\u2010web struc...", "size": 15, "citations": 1195, "importance": 47.0, "imp_color_val": 4.244623655913979, "year_color_val": 0.4074074074074074, "year": 2011, "authors": ["Layman Craig A.", "Araujo Marcio S."], "journal": "Biological Reviews", "fullTitle": "Applying stable isotopes to examine food\u2010web structure: an overview of analytical tools", "is_secondary": true, "is_core": true, "abstract": "Stable isotope analysis has emerged as one of the primary means for examining the structure and dynamics of food webs, and numerous analytical approaches are now commonly used in the field. Techniques range from simple, qualitative inferences based on the isotopic niche, to Bayesian mixing models that can be used to characterize food\u2010web structure at multiple hierarchical levels. We provide a comprehensive review of these techniques, and thus a single reference source to help identify the most useful approaches to apply to a given data set. We structure the review around four general questions: (1) what is the trophic position of an organism in a food web?; (2) which resource pools support consumers?; (3) what additional information does relative position of consumers in isotopic space reveal about food\u2010web structure?; and (4) what is the degree of trophic variability at the intrapopulation level? For each general question, we detail different approaches that have been applied, discussing the strengths and weaknesses of each. We conclude with a set of suggestions that transcend individual analytical approaches, and provide guidance for future applications in the field."}, {"id": "10.1111/1365-2656.13333", "title": "Functional traits explain trophic allometries of c...", "size": 12.862727528317976, "citations": 26, "importance": 25.5, "imp_color_val": 1.9327956989247315, "year_color_val": 0.7407407407407407, "year": 2020, "authors": ["Murphy Kieran J.", "Pecl Gretta T."], "journal": "Journal of Animal Ecology", "fullTitle": "Functional traits explain trophic allometries of cephalopods", "is_secondary": true, "is_core": true, "abstract": "Abstract Individual body size strongly influences the trophic role of marine organisms and the structure and function of marine ecosystems. Quantifying trophic position\u2013individual body size relationships (trophic allometries) underpins the development of size\u2010structured ecosystem models to predict abundance and the transfer of energy through ecosystems. Trophic allometries are well studied for fishes but remain relatively unexplored for cephalopods. Cephalopods are important components of coastal, oceanic and deep\u2010sea ecosystems, and they play a key role in the transfer of biomass from low trophic positions to higher predators. It is therefore important to resolve cephalopod trophic allometries to accurately represent them within size\u2010structured ecosystem models. We assessed the trophic positions of cephalopods in an oceanic pelagic (0\u2013500 m) community (sampled by trawling in a cold\u2010core eddy in the western Tasman Sea), comprising 22 species from 12 families, using bulk tissue stable isotope analysis and amino acid compound\u2010specific stable isotope analysis. We assessed whether ontogenetic trophic position shifts were evident at the species\u2010level and tested for the best predictor of community\u2010level trophic allometry among body size, taxonomy and functional grouping (informed by fin and mantle morphology). Individuals in this cephalopod community spanned two trophic positions and fell into three functional groups on an activity level gradient: low, medium and high. The relationship between trophic position and ontogeny varied among species, with the most marked differences evident between species from different functional groups. Activity\u2010level\u2010based functional group and individual body size are best explained by cephalopod trophic positions (marginal R 2 = 0.43). Our results suggest that the morphological traits used to infer activity level, such as fin\u2010to\u2010mantle length ratio, fin musculature and mantle musculature are strong predictors of cephalopod trophic allometries. Contrary to established theory, not all cephalopods are voracious predators. Low activity level cephalopods have a distinct feeding mode, with low trophic positions and little\u2010to\u2010no ontogenetic increases. Given the important role of cephalopods in marine ecosystems, distinct feeding modes could have important consequences for energy pathways and ecosystem structure and function. These findings will facilitate trait\u2010based and other model estimates of cephalopod abundance in the changing global ocean."}, {"id": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "title": "USING STABLE ISOTOPES TO ESTIMATE TROPHIC POSITION...", "size": 15, "citations": 6220, "importance": 29.5, "imp_color_val": 2.362903225806452, "year_color_val": 0.07407407407407407, "year": 2002, "authors": ["Post David M."], "journal": "Ecology", "fullTitle": "USING STABLE ISOTOPES TO ESTIMATE TROPHIC POSITION: MODELS, METHODS, AND ASSUMPTIONS", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1038/35016565", "title": "Ecosystem size determines food-chain length in lak...", "size": 15, "citations": 628, "importance": 8.899999999999999, "imp_color_val": 0.1478494623655912, "year_color_val": 0.0, "year": 2000, "authors": ["Post David M.", "Pace Michael L."], "journal": "Nature", "fullTitle": "Ecosystem size determines food-chain length in lakes", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1007/s00442-003-1270-z", "title": "Sources of variation in consumer-diet ?15N enrichm...", "size": 15, "citations": 1362, "importance": 9.149999999999999, "imp_color_val": 0.17473118279569874, "year_color_val": 0.1111111111111111, "year": 2003, "authors": ["Vanderklift Mathew A.", "Ponsard Sergine"], "journal": "Oecologia", "fullTitle": "Sources of variation in consumer-diet ?15N enrichment: a meta-analysis", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "title": "MEASURING INDIVIDUAL-LEVEL RESOURCE SPECIALIZATION", "size": 15, "citations": 356, "importance": 9.299999999999999, "imp_color_val": 0.1908602150537633, "year_color_val": 0.07407407407407407, "year": 2002, "authors": ["Bolnick Daniel I.", "Yang Louie H."], "journal": "Ecology", "fullTitle": "MEASURING INDIVIDUAL-LEVEL RESOURCE SPECIALIZATION", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1007/s00227-026-04904-8", "title": "Niche overlap and trophic position estimates of mu...", "size": 10, "citations": 0, "importance": 9.049999999999999, "imp_color_val": 0.16397849462365577, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["J. Logan", "K. Dourdeville"], "journal": "Marine Biology", "fullTitle": "Niche overlap and trophic position estimates of multiple sea turtle species cold-stunned in the Northwest Atlantic", "is_secondary": false, "is_core": false, "abstract": "Juvenile Kemp\u2019s ridley (Lepidochelys kempii), loggerhead (Caretta caretta) and green (Chelonia mydas) sea turtles regularly strand following seasonal cold-stunning events in southern New England, but much of their pre-stranding ecology is poorly understood. To determine general trends in foraging preferences, habitat usage, and trophic position we used a combination of bulk (BSIA) and compound-specific (CSIA) stable isotope analyses. Carbon (\u03b413C) and nitrogen (\u03b415N) BSIA were performed on whole blood and muscle samples collected from stranded individuals of all three species. Sulfur (\u03b434S) BSIA and \u03b415N CSIA were applied to a subset of samples to further infer habitat use and trophic information. Stable isotopic niche overlap and muscle isotope-based trophic position (TP) estimates were similar for the three species, with green (TPBSIA= 2.4, TPCSIA= 2.9\u20133.2) and loggerhead turtles (TPBSIA = 3.5, TPCSIA= 3.3\u20133.7) having the lowest overlap and greatest TP separation. Kemp\u2019s ridleys had intermediate estimated TP (TPBSIA = 2.9, TPCSIA = 3.1\u20133.4) and a high degree of overlap with the two other species. Turtle straight carapace length (SCL) was the main predictor of intraspecific stable isotope variation, and \u03b415N values increased with SCL for all species and both tissue types. These patterns are consistent with ontogenetic TP increases as well as transition from oceanic to nearshore isoscapes. Higher intraspecific variation in BSIA-based TP estimates relative to CSIA-based estimates as well as variable inter-tissue stable isotope offsets provide evidence of individual variability in residency in nearshore waters prior to stranding."}, {"id": "10.1007/s00227-026-04920-8", "title": "Isotopic variability of black corals: which scale ...", "size": 10, "citations": 0, "importance": 18.0, "imp_color_val": 1.1263440860215055, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["L. Terrana", "N. Sturaro"], "journal": "Marine Biology", "fullTitle": "Isotopic variability of black corals: which scale matters? An intracolonial, intra\u2013 and interspecific comparison of two shallow-water species", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1016/j.jmarsys.2026.104253", "title": "Benthic food web dynamics and resource use during ...", "size": 10.602059991327963, "citations": 1, "importance": 9.475, "imp_color_val": 0.20967741935483866, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Claudia Andrade", "Taryn Sep\u00falveda"], "journal": "Journal of Marine Systems", "fullTitle": "Benthic food web dynamics and resource use during winter in Central Patagonian fjords (~48\u00b0S)", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1017/S0025315400002502", "title": "Geographical variations in carbon and nitrogen sta...", "size": 13.927575654691111, "citations": 91, "importance": 8.25, "imp_color_val": 0.0779569892473118, "year_color_val": 0.0, "year": 2000, "authors": ["Takai Noriyuki", "Onaka Sayaka"], "journal": "Journal of the Marine Biological Association of the United Kingdom", "fullTitle": "Geographical variations in carbon and nitrogen stable isotope ratios in squid", "is_secondary": false, "is_core": false, "abstract": "The magnitude of geographical variations of stable isotope ratios of carbon and nitrogen was examined in ten squid species captured in seven areas of the world's oceans. The average of all 139 squid was \u221217.4\u00b11.4\u2030 for \u03b413C and 11.6\u00b11.6\u2030 for \u03b415N. The \u03b413C of squid showed a clear-cut negative correlation with the latitude of the sampling locations, reflecting the well-known latitudinal characteristics of phytoplankton \u03b413C, while squid \u03b4,15N did not correlate with the latitude significantly. The \u03b415N reflected the regional characteristics of nitrogen metabolism such as denitrification and N2 fixation, and it was conspicuous in the intraspecific variation in Sthenoteuthis oualaniensis ranging from 10.0\u00b11.5\u2030 off Japan to 16.3\u00b10.6\u2030 off Peru in the Pacific Ocean. Significant isotopic variations were also found in the local area among the five species off Japan in the Pacific Ocean and among the three species in the Japan Sea. Attention must be paid to the isotopic variations of primary producers as well as those of squid in examining the trophic positions of squid."}, {"id": "10.3354/meps12767", "title": "Ontogenetic changes in stable isotope (\u03b413C and \u03b41...", "size": 13.266936911159172, "citations": 42, "importance": 7.8, "imp_color_val": 0.029569892473118226, "year_color_val": 0.6666666666666666, "year": 2018, "authors": ["Golikov AV", "Ceia FR"], "journal": "Marine Ecology Progress Series", "fullTitle": "Ontogenetic changes in stable isotope (\u03b413C and \u03b415N) values in squid Gonatus fabricii (Cephalopoda) reveal its important ecological role in the Arctic", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.64898/2026.04.29.721722", "title": "Regional ecological variation drives isotopic nich...", "size": 10, "citations": 0, "importance": 23.5, "imp_color_val": 1.7177419354838712, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["J. Veloso", "G. Barord"], "journal": "bioRxiv", "fullTitle": "Regional ecological variation drives isotopic niche divergence in Pacific nautiloids", "is_secondary": true, "is_core": true, "abstract": "Nautiloids, the only surviving externally shelled cephalopods, persist in isolated Indo-Pacific reef slopes despite life-history traits that limit dispersal and recovery. Yet the ecological basis of their persistence remains poorly understood. Here, we compare carbon (\u03b413C) and nitrogen (\u03b415N) isotope values from seven nautiloid populations (including Nautilus and Allonautilus) spanning the Pacific. Isotopic niches varied strongly among locations, but only weakly among species, suggesting that geographic context rather than phylogenetic identity is the primary driver of trophic differentiation. Populations from the Bismarck Sea and American Samoa exhibited elevated \u03b415N, consistent with regional nutrient cycling and nitrogen fixation, whereas Great Barrier Reef (GBR) nautiloids displayed unusually broad \u03b413C ranges linked to possible reef-derived carbon subsidies. These results reveal how local oceanography and resource availability shape isotopic niches in long-isolated populations, providing a framework for understanding both the ecological resilience and evolutionary divergence of ancient cephalopods in modern oceans."}, {"id": "10.1016/j.fishres.2023.106921", "title": "Trophic niche partitioning of golden cuttlefish (S...", "size": 11.397940008672037, "citations": 4, "importance": 8.35, "imp_color_val": 0.08870967741935477, "year_color_val": 0.8888888888888888, "year": 2024, "authors": ["Yuyang Zhang", "Lin-Long Wang"], "journal": "Fisheries Research", "fullTitle": "Trophic niche partitioning of golden cuttlefish (Sepia esculenta) during ontogeny revealed by stable isotope analysis and DNA metabarcoding", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.3389/fmars.2023.1254461", "title": "Towards unlocking the trophic roles of rarely enco...", "size": 10.954242509439325, "citations": 2, "importance": 8.6, "imp_color_val": 0.1155913978494623, "year_color_val": 0.8518518518518519, "year": 2023, "authors": ["Bethany Jackel", "R. Baring"], "journal": "Frontiers in Marine Science", "fullTitle": "Towards unlocking the trophic roles of rarely encountered squid: Opportunistic samples of Taningia danae and a Chiroteuthis aff. veranii reveal that the Southern Ocean top predators are nutrient links connecting deep-sea and shelf-slope environments", "is_secondary": false, "is_core": false, "abstract": "Deep-sea squids are presumably vital components of largely undescribed marine ecosystems, yet limited access to specimens has hampered efforts to detail their ecological roles as predators and preys. Biochemical techniques such as stable isotope analyses, fatty acid analyses, and bomb calorimetry are increasingly recognized for their ability to infer trophic ecology and dietary information from small quantities of tissue. This study used five opportunistically collected Taningia danae specimens and one Chiroteuthis aff. veranii specimen retrieved from the Great Australian Bight, South Australia, to detail the trophic ecology of these poorly understood squids. Four body tissue types (i.e., arm, buccal mass, mantle, and digestive gland) were assessed for their utility in stable isotope (SI) and fatty acid (FA) analyses, and we found that the arm, buccal mass, and mantle tissues had similar SI and FA profiles, suggesting that they can be used interchangeably when the entire specimen is unavailable. \u03b413C, \u03b415N, and fatty acid data suggests that the T. danae and C. aff. veranii specimens lived in the Southern Ocean and were high-trophic-level predators, feeding on deep-sea fishes and small squids, while also taking advantage of the summer upwelling region of the Great Australian Bight. The fatty acid analysis and bomb calorimetry results indicate that these squids might be important reservoirs of essential FAs (EPA and DHA) for Southern Ocean predators and that the whole-body energy content of T. danae individuals can reach up to 362,250 kJ. Our findings indicate that these squids may be contributing greatly to the transport of nutrients and energy between the Southern Ocean deep-sea and the Great Australian Bight shelf\u2013slope environments. In addition to building our understanding of the trophic ecology of two poorly understood deep-sea squids, these findings also highlight the utility of partial specimens and demonstrate the important ecological information that can be obtained from few samples that may be opportunistically collected."}, {"id": "10.3389/fphys.2022.1038064", "title": "The significance of cephalopod beaks as a research...", "size": 13.112605001534575, "citations": 35, "importance": 8.6, "imp_color_val": 0.1155913978494623, "year_color_val": 0.8148148148148148, "year": 2022, "authors": ["J. Xavier", "A. Golikov"], "journal": "Frontiers in Physiology", "fullTitle": "The significance of cephalopod beaks as a research tool: An update", "is_secondary": false, "is_core": false, "abstract": "The use of cephalopod beaks in ecological and population dynamics studies has allowed major advances of our knowledge on the role of cephalopods in marine ecosystems in the last 60 years. Since the 1960\u2019s, with the pioneering research by Malcolm Clarke and colleagues, cephalopod beaks (also named jaws or mandibles) have been described to species level and their measurements have been shown to be related to cephalopod body size and mass, which permitted important information to be obtained on numerous biological and ecological aspects of cephalopods in marine ecosystems. In the last decade, a range of new techniques has been applied to cephalopod beaks, permitting new kinds of insight into cephalopod biology and ecology. The workshop on cephalopod beaks of the Cephalopod International Advisory Council Conference (Sesimbra, Portugal) in 2022 aimed to review the most recent scientific developments in this field and to identify future challenges, particularly in relation to taxonomy, age, growth, chemical composition (i.e., DNA, proteomics, stable isotopes, trace elements) and physical (i.e., structural) analyses. In terms of taxonomy, new techniques (e.g., 3D geometric morphometrics) for identifying cephalopods from their beaks are being developed with promising results, although the need for experts and reference collections of cephalopod beaks will continue. The use of beak microstructure for age and growth studies has been validated. Stable isotope analyses on beaks have proven to be an excellent technique to get valuable information on the ecology of cephalopods (namely habitat and trophic position). Trace element analyses is also possible using beaks, where concentrations are significantly lower than in other tissues (e.g., muscle, digestive gland, gills). Extracting DNA from beaks was only possible in one study so far. Protein analyses can also be made using cephalopod beaks. Future challenges in research using cephalopod beaks are also discussed."}, {"id": "10.3389/fmars.2022.818088", "title": "Stable Isotope Analysis Revealed Ontogenetic Chang...", "size": 11.690196080028514, "citations": 6, "importance": 10.775, "imp_color_val": 0.34946236559139787, "year_color_val": 0.8148148148148148, "year": 2022, "authors": ["Wang Linlong", "Liu Yang"], "journal": "Frontiers in Marine Science", "fullTitle": "Stable Isotope Analysis Revealed Ontogenetic Changes in Trophic Ecology and Migration Patterns of Sepia esculenta in the Northern Coastal Waters of China", "is_secondary": false, "is_core": false, "abstract": "Golden cuttlefish (Sepia esculenta), the most economically important cephalopod in the northern coastal seas of China, had experienced greatly reduced population biomass due to continuous fishing pressure in recent decades. Understanding the trophic ecology and clarifying the spatial distribution of wintering ground can help develop management plans for this species. In this study, the ontogenetic changes in the trophic ecology of S. esculenta in the Qingdao coastal water were determined, and the migration patterns were studied using stable isotope analysis. Cluster analysis based on isotopic values divided S. esculenta with different lengths into groups: 11\u201320, 21\u2013100, and 121\u2013200 mm. A significant difference in the \u03b413C values between the groups 11\u201320 mm (\u221217.10\u2030) and 21\u2013100 mm (\u221215.89\u2030) illustrates an ontogenetic change in the feeding habits. Due to the migratory habits of S. esculenta, the \u03b413C value of the group 121\u2013200 mm (\u221216.39\u2030) was lower than that of the group 21\u2013100 mm. The \u03b415N values of S. esculenta were found to increase in length, and there was a clear linear relationship between different S. esculenta groups, suggesting that the wintering ground may locate in the same latitude as the spawning ground (i.e., the middle Yellow Sea). Furthermore, the trophic relationship between S. esculenta and coexisting species was assessed, revealing that the group 11\u201320 mm of S. esculenta has some overlap of carbon isotope space with other species, suggesting that these species may feed on it as prey. Thus, slightly increasing the length to more than 20 mm may reduce the pressure of being the prey of post-release juveniles of S. esculenta and improve the effect of release."}, {"id": "10.3389/fmars.2020.616116", "title": "Discrete Spawning Aggregations of the Loliginid Sq...", "size": 10.954242509439325, "citations": 2, "importance": 8.15, "imp_color_val": 0.06720430107526883, "year_color_val": 0.7777777777777778, "year": 2021, "authors": ["Sergio A. Carrasco", "M. Bravo"], "journal": "Frontiers in Marine Science", "fullTitle": "Discrete Spawning Aggregations of the Loliginid Squid Doryteuthis gahi Reveal Life-History Interactions of a Dwarf Morphotype at the Center of Its Distribution Range", "is_secondary": false, "is_core": false, "abstract": "Heterogeneous environmental conditions along the Humboldt Current System (HCS) influence the life-history strategy of a variety of species in different ways. There is limited information on latitudinal traits of coastal cephalopods as part of the interacting species in pelagic and benthic environments. The present study used the loliginid squid Doryteuthis gahi as a model organism to: (1) evaluate latitudinal traits on egg laying patterns, (2) characterize a particular spawning ground, (3) quantify the isotopic variation from different tissues, (4) evaluate potential trophic ontogenetic changes, (5) determinate trophic position, and (6) isotopically estimate the relative importance of putative preys in the squid\u2019s assimilated diet. Results evidenced that egg-masses collected between 2014 and 2020 presented similar patterns along northern-central Chile (27\u201336\u00b0S), with females attaching small egg-capsules (10\u201350 mm length) through the year and over a variety of anthropogenic and natural substrates. At a small scale (Coquimbo; 29\u00b0S), early life history traits showed distinct patterns depending on SST, with warmer collection periods (\u223c18\u00b0C) evidencing larger capsules and smaller embryos, although small paralarvae were obtained over the 4-year sampling period. In this site, sampling of older ontogenetic stages supported the constant presence of small-sized squids (19\u201377 mm ML). Males had larger mean sizes compared to females and undetermined specimens, with a high proportion of mature stages. Observations in captivity were extended for up to 110 d, validating that small females (45\u201364 mm ML) spawn the small egg-capsules typically observed in the field. Differences in stable isotope composition between beaks and soft tissues of adult squids were lower for \u03b413C values (1.1 vs. 1.4\u2030, respectively) and higher for \u03b415N values (5.3 vs. 4.7\u2030, respectively). Isotopic composition through ontogeny found similar \u03b413C and \u03b415N values, suggesting that carbon sources (pelagic origin) and trophic position did not change significantly, with copepods, euphausiids and nereid polychaetes being the most important preys. This study unveils the permanent occurrence of a small reproductive morphotype of D. gahi in shallow coastal habitats of northern-central Chile (i.e., center of the distribution range), providing the first insights for understanding the species\u2019 potential adaptations to heterogeneous conditions in the HCS and the unexplored distribution gap between the two centers of abundance (Peru and the Falkland/Malvinas islands)."}, {"id": "10.1016/j.rsma.2026.105498", "title": "Ontogenetic Niche Shifts of Sepiella maindroni Bas...", "size": 10, "citations": 0, "importance": 8.424999999999999, "imp_color_val": 0.09677419354838696, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Yuan-Yuan Su", "Bi-Lin Liu"], "journal": "Regional Studies in Marine Science", "fullTitle": "Ontogenetic Niche Shifts of Sepiella maindroni Based on Stable Isotopes in Muscle and Eye Lens", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1007/s00227-024-04592-2", "title": "Trophic ecology of squids in the Benguela Upwellin...", "size": 11.397940008672037, "citations": 4, "importance": 7.525, "imp_color_val": 0.0, "year_color_val": 0.9259259259259259, "year": 2025, "authors": ["K. Kremer", "Wilhelm Hagen"], "journal": "Marine Biology", "fullTitle": "Trophic ecology of squids in the Benguela Upwelling System elucidated by combining stomach content, stable isotope and fatty acid analyses", "is_secondary": false, "is_core": false, "abstract": "Squids occur worldwide in marine ecosystems and play a major role in pelagic food webs by connecting lower and higher trophic levels. Their high feeding intensities and pronounced diel vertical migrations make squids important components of nutrient cycles in marine ecosystems. This study assessed the trophic position and nutritional ecology of a squid species assemblage in the Benguela Upwelling System (BUS) by combining stomach content, stable isotope and fatty acid trophic marker analyses. Samples were collected in the northern (nBUS) and southern (sBUS) BUS in austral spring 2021. A total of 20 squid species from eleven families were identified. Stomach content analyses showed that squid species preyed on a variety of organisms ranging from crustaceans to lanternfishes (Myctophidae) and flying squids (Ommastrephidae). Stable isotope analyses revealed significant differences in \u03b415N values of small squids (dorsal mantle length 10 cm). Trophic levels ranged from 2.2 to 5.0. Isotopic niche width was widest in the families Ommastrephidae and Cranchiidae. Principal component analyses of fatty acid compositions displayed distinct clusters separating squid families and different prey taxa. This study shows that nBUS and sBUS squids exploit a large variety of pelagic prey organisms and that trophic differences are primarily dependent on squid species and size. The results emphasize the squids\u2019 importance as interlinking element in pelagic food webs and their key function in energy transfer between epi- and mesopelagic layers."}, {"id": "10.1007/s00227-024-04571-7", "title": "Using museum specimens of northern shortfin squid ...", "size": 10.602059991327963, "citations": 1, "importance": 7.525, "imp_color_val": 0.0, "year_color_val": 0.8888888888888888, "year": 2024, "authors": ["Valerie H. Dimkovikj", "M. Staudinger"], "journal": "Marine Biology", "fullTitle": "Using museum specimens of northern shortfin squid (Illex illecebrosus) to evaluate long-term ecological changes in the Northeast U.S. Continental Shelf large marine ecosystem", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1007/s11160-026-10105-9", "title": "Size-based food web structure in contrasting eddy ...", "size": 10, "citations": 0, "importance": 7.9, "imp_color_val": 0.040322580645161296, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Lian E. Kwong", "Peter Garside"], "journal": "Reviews in Fish Biology and Fisheries", "fullTitle": "Size-based food web structure in contrasting eddy ecosystems", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1111/j.0021-8790.2004.00861.x", "title": "Determining trophic niche width: a novel approach ...", "size": 15, "citations": 1229, "importance": 35.5, "imp_color_val": 3.008064516129033, "year_color_val": 0.14814814814814814, "year": 2004, "authors": ["BEARHOP STUART", "ADAMS COLIN E."], "journal": "Journal of Animal Ecology", "fullTitle": "Determining trophic niche width: a novel approach using stable isotope analysis", "is_secondary": true, "is_core": true, "abstract": "Summary Although conceptually robust, it has proven difficult to find practical measures of niche width that are simple to obtain, yet provide an adequate descriptor of the ecological position of the population examined. Trophic niche has proven more tractable than other niche dimensions. However, indices used as a proxy for trophic niche width often suffer from the following difficulties. Such indices rarely lie along a single scale making comparisons between populations or species difficult; have difficulty in combining dietary prey diversity and evenness in an ecologically meaningful way; and fail to integrate diet over ecological time\u2010scales thus usually only comprise single snapshots of niche width. We propose an alternative novel method for the comparison of trophic niche width: the use of variance of tissue stable isotope ratios, especially those of nitrogen and carbon. This approach is a potentially powerful method of measuring trophic niche width, particularly if combined with conventional approaches, because: it provides a single measure on a continuous axis that is common to all species; it integrates information on only assimilated prey over time; the integration period changes with choice of tissue sampled; and data production is theoretically fast and testing among populations simple. Empirical studies are now required to test the benefits of using isotopic variance as a measure of niche width, and in doing so help refine this approach."}, {"id": "10.1086/343878", "title": "The Ecology of Individuals: Incidence and Implicat...", "size": 15, "citations": 2477, "importance": 32.0, "imp_color_val": 2.6317204301075274, "year_color_val": 0.1111111111111111, "year": 2003, "authors": ["Bolnick Daniel\u00a0I.", "Svanb\u00e4ck Richard"], "journal": "The American Naturalist", "fullTitle": "The Ecology of Individuals: Incidence and Implications of Individual Specialization", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1016/j.ecolind.2026.115719", "title": "Food-web reorganization in an artificial reef reve...", "size": 10, "citations": 0, "importance": 11.625, "imp_color_val": 0.44086021505376344, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Zhi-Peng Zhang", "Jing-Jing Song"], "journal": "Ecological Indicators", "fullTitle": "Food-web reorganization in an artificial reef revealed by flow-based indicators", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1016/j.marpolbul.2026.120429", "title": "Multi-tracer evaluation of cesium-137 bioaccumulat...", "size": 10, "citations": 0, "importance": 8.025, "imp_color_val": 0.05376344086021506, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Su-Jin Jung", "Intae Kim"], "journal": "Marine Pollution Bulletin", "fullTitle": "Multi-tracer evaluation of cesium-137 bioaccumulation and trophic transfer in marine organisms off Jeju Island, Korea.", "is_secondary": false, "is_core": false, "abstract": "Radionuclides accidentally released from nuclear facilities into the marine environment may affect ecosystems far from their original sources, yet their ecological behavior in such regions remains poorly understood. Using a multi-tracer approach, we evaluated 137Cs bioaccumulation and trophic transfer at a coastal station (R0) and an offshore station (R1) east of Jeju Island, a region strongly influenced by the Tsushima Warm Current, in 2024 and 2025. Bulk \u03b413C and \u03b415N, amino acid-specific \u03b415N-derived trophic position (TPGlu/Phe), 137Cs, 133Cs, total mercury (THg), and Al were determined across organisms spanning multiple trophic levels. Bulk \u03b415N did not consistently reflect trophic position estimated by TPGlu/Phe in this dataset. The highest 137Cs concentration factors were observed in the fish Pagrus major at R0 and the sponge Euplectella marshalli at R1. However, Al concentrations in sponges exceeded those in sediments and increased with 133Cs, suggesting that retained sediment particles may have contributed to apparent Cs enrichment. Excluding samples with potential particle influence further strengthened the relationships of 137Cs, 133Cs, and THg concentrations with TPGlu/Phe at R0; the respective trophic magnification factors were 2.95, 3.24, and 6.17. In contrast, no significant trophic relationships were detected at R1. These findings indicate that 137Cs bioaccumulation and trophic transfer may vary spatially and among taxa, potentially reflecting differences in food-web structure and basal resources. A multi-tracer approach is therefore important for understanding these processes by accurately determining trophic position and identifying apparent enrichment associated with retained sediment particles."}, {"id": "10.1002/lno.70523", "title": "Plankton nutritional quality outweighs isotopic tr...", "size": 10, "citations": 0, "importance": 8.1, "imp_color_val": 0.06182795698924724, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Dan-Yang Li", "Yi Long"], "journal": "Limnology and Oceanography", "fullTitle": "Plankton nutritional quality outweighs isotopic trophic position in predicting food chain length across oceanic gradients", "is_secondary": false, "is_core": false, "abstract": "The Eastern Indian Ocean exhibits a gradient from eutrophic nearshore to oligotrophic offshore conditions. The trophic structure of the planktonic food web in this region was investigated in spring 2022 using stable isotopes (\u03b413C, \u03b415N), biomass, and piecewise structural equation models (PSEM). Regional comparisons based on grouped stations showed that the equatorial zone was highly oligotrophic with the shortest food\u2010chain length (FCL = 3.12), while the Bay of Bengal had the highest \u03b415N baseline and widest trophic range (0.10\u20134.0). The Sumatra upwelling and seamount area were nutrient\u2010rich, supporting high particulate organic matter (POM), phytoplankton biomass, and top predators with longer food chains (FCL = 4.26 and FCL = 4.73, respectively). Isotopic niches were broadest in nearshore and upwelling zones but most constrained in oligotrophic waters. Using station\u2010level data, the PSEM revealed that nitrite and chlorophyll a influenced isotopic patterns and FCL through POM carbon\u2010to\u2010nitrogen ratio (C : N), while plankton C : N played a significant role in extending the FCL. These findings emphasize how gradients shape food webs and the importance of upwelling and seamounts in supporting high\u2010trophic\u2010level species and carbon sequestration in the face of climate change."}, {"id": "10.1016/j.jas.2026.106687", "title": "Tracking individual dietary choices in complex pas...", "size": 10, "citations": 0, "importance": 16.825, "imp_color_val": 1.0, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["M. Krajcarz", "K. Choy"], "journal": "Journal of Archaeological Science", "fullTitle": "Tracking individual dietary choices in complex past food webs: Integrated bulk collagen and compound-specific stable isotope analysis of urban cats", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.3390/environments13100539", "title": "Decoupling Between Benthic Trophic and Functional ...", "size": 10, "citations": 0, "importance": 9.049999999999999, "imp_color_val": 0.16397849462365577, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Taryn Sep\u00falveda", "Claudia D. Andrade"], "journal": "Environments", "fullTitle": "Decoupling Between Benthic Trophic and Functional Structure in Sub-Antarctic Patagonian Fjords Under Contrasting Environmental Stressors", "is_secondary": false, "is_core": false, "abstract": "Benthic communities are a fundamental component of coastal marine ecosystems, regulating energy flow, mediating trophic transfer, and supporting a wide range of ecological functions closely linked to habitat characteristics. In Marine Protected Areas (MPAs), integrative approaches that simultaneously address trophic and functional dimensions are essential to assess ecosystem functioning and resilience to environmental disturbances. This study aimed to characterize and compare the trophic structure and functional diversity of benthic communities in sub-Antarctic fjords and channels of the Magellan region (southern Chile), all of which are located within MPAs and represent contrasting environmental settings characterized by either proglacial influence or a documented history of recurrent harmful algal bloom (HAB) occurrence and paralytic shellfish toxin (PST) exposure. We hypothesized that benthic communities under these contrasting environmental stressors would differ in carbon assimilation pathways, community isotopic niche breadth, and functional organization. Trophic structure was evaluated using stable isotope analysis (\u03b413C and \u03b415N), Bayesian mixing models to estimate basal carbon source contributions, and community-level isotopic metrics. Functional diversity was quantified using biological and ecological traits to calculate community- and species-level functional indices. Our results revealed marked differences in trophic organization among localities, whereas global functional diversity indices were consistently low and similar across environmental settings. Communities from localities characterized by recurrent HAB/PST exposure showed limited trophic reliance on pelagic-derived organic matter, maintaining benthic-based energy pathways, whereas proglacial localities exhibited higher allochthonous subsidies and broader isotopic niches. Functional uniqueness and specialization metrics indicated strong functional redundancy and a high dependence on a small set of functionally distinctive species. These findings establish a baseline for remote MPAs and demonstrate the value of integrating trophic and functional metrics in long-term monitoring and adaptive management frameworks."}, {"id": "10.3390/biology15191699", "title": "From Basal Sources to Top Predators: Isotopic Evid...", "size": 10, "citations": 0, "importance": 8.85, "imp_color_val": 0.14247311827956982, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Lisette Zenteno-Devaud", "G. Aguirre-Mart\u00ednez"], "journal": "Biology", "fullTitle": "From Basal Sources to Top Predators: Isotopic Evidence of Trophic Organization in the Francisco Coloane Coastal Marine Protected Area", "is_secondary": false, "is_core": false, "abstract": "Simple Summary Coastal food webs are typically organized around two basal energy channels\u2014a fast pelagic pathway and a slower benthic one\u2014but the extent to which these channels remain segregated as energy is transferred to higher trophic levels is rarely tested in remote systems. Using carbon and nitrogen stable isotopes across a four-level food web in the Francisco Coloane Marine Coastal Protected Area (Strait of Magellan, Chile), we found that basal resource heterogeneity structured isotopic niches strongly at lower trophic positions but gave way to substantial niche overlap and redundancy at intermediate levels. Macroalgae dominated assimilated carbon across resident consumers, while sediment organic matter functioned as an integrative rather than an independent basal source. These results support a partially coupled trophic architecture, in which channel differentiation at the food-web base is progressively integrated rather than propagated toward higher consumers, with direct implications for how energy connectivity should inform the management of this protected area."}, {"id": "10.1016/j.jmarsys.2026.104283", "title": "Influence of tissue preservation techniques on \u03b413...", "size": 10, "citations": 0, "importance": 8.975, "imp_color_val": 0.1559139784946236, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["M. Calabr\u00f2", "F. Falsone"], "journal": "Journal of Marine Systems", "fullTitle": "Influence of tissue preservation techniques on \u03b413C and \u03b415N signatures in selected marine taxa", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1080/10256016.2026.2728770", "title": "Fine-scale habitat quality drives isotopic niche v...", "size": 10, "citations": 0, "importance": 11.75, "imp_color_val": 0.45430107526881724, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["I. Mattos", "J. F. Ribeiro"], "journal": "Isotopes in environmental and health studies", "fullTitle": "Fine-scale habitat quality drives isotopic niche variation in a didelphid opossum in fragmented semideciduous dry forests of central Brazil.", "is_secondary": false, "is_core": false, "abstract": "Studies on the effects of habitat fragmentation on animal trophic ecology have traditionally emphasised patch size or habitat loss, while the role of habitat quality has been comparatively overlooked. We investigated how habitat quality - assessed through as fine-scale variation of forest structure and food resource availability within patches - alongside patch attributes and landscape configuration, shapes the isotopic niche of the opossum Gracilinanus agilis in fragmented semideciduous dry forests of the central Brazilian Cerrado. Using a multiscale approach, we investigated the trophic responses of the species to environmental variation across 36 forest patches during two field campaigns conducted in 2018. Small mammals were live-trapped, habitat quality descriptors were quantified, and patch- and landscape-scale metrics (1-km buffer) were measured. Isotopic niche metrics were estimated from \u03b413C and \u03b415N values obtained from hair samples. Regression analyses showed that variation in \u03b4\u00b9\u2075N range (NR) increased with patch core area, indicating a broader range of trophic levels in larger and better-preserved patches. At the habitat-quality scale, the evenness of niche packing (SDNND) decreased with increasing vine abundance, suggesting that preferential understory use in more degraded forests may increase microhabitat overlap among individuals and leads to a more homogeneous trophic structure in isotopic space, with individuals more evenly packed within a narrower isotopic niche. SDNND also declined with higher termite abundance, indicating increased isotopic similarity among individuals as this resource became more intensively exploited. At the patch scale, SDNND increased with patch core area, suggesting greater trophic differentiation among individuals in larger patches with more pristine vegetation. Overall, trophic responses varied across spatial scales, with patch characteristics and habitat quality exerting stronger effects than landscape-level structure. Our findings highlight the importance of fine-scale environmental conditions in shaping the trophic niche structure and reinforce the need to incorporate habitat quality into fragmentation research."}, {"id": "10.1002/eap.70284", "title": "Predator-mediated trophic connectivity between ree...", "size": 10, "citations": 0, "importance": 9.174999999999999, "imp_color_val": 0.17741935483870955, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Natalie S. Arnoldi", "Aaron Carlisle"], "journal": "Ecological Applications", "fullTitle": "Predator-mediated trophic connectivity between reef and oceanic habitats in Palau.", "is_secondary": false, "is_core": false, "abstract": "Effective fisheries management and marine spatial planning depend on understanding how mobile predators link reef and oceanic ecosystems through cross-habitat movements and foraging. Predator resource use shapes movement and space-use strategies, providing insight into life history and behavioral variation, the identification of critical habitats, and spatial patterns of vulnerability to fishing and other human activities. Yet cross-habitat trophic connectivity remains poorly quantified in diverse coral reef and oceanic systems. Here, we used stable isotope (\u03b413C, \u03b415N) analysis, complemented by stomach content analysis, to examine cross-habitat resource use of predatory fishes across reef and near-reef oceanic ecosystems in Palau, in the Western Pacific, evaluating patterns across species, trophic guilds, and habitat associations. Cluster analyses, isotopic niche metrics, and Bayesian stable isotope mixing models revealed asymmetric but bidirectional connectivity, with resource utilization typically spanning both habitats but skewed towards reef or oceanic depending on species groups. Reef predators showed greater variability in resource use and higher reliance on oceanic inputs than oceanic predators relied on reef resources, with broad isotopic niches consistent with mobility, water-column use, and generalist foraging strategies. In contrast, most oceanic predators largely specialized on oceanic prey, although stomach contents documenting larval and juvenile reef fishes indicate occasional incorporation of reef-origin resources. Our results highlight the disproportionate importance of oceanic production in supporting reef predator populations, particularly where physical forcing concentrates prey near reef margins. Although reef contributions to oceanic predator diets were comparatively small, even limited inputs may be ecologically meaningful for migratory species during critical life stages. Together, these findings demonstrate widespread but trait-structured and individually variable predator-mediated connectivity that challenges binary \"reef\" versus \"oceanic\" classifications. Incorporating trophic connectivity into fisheries management and marine spatial planning can better align protection with the energetic pathways and habitat utilization sustaining predators in reef-ocean systems."}, {"id": "10.1016/j.csr.2026.105769", "title": "Trophic niche structure of a sea urchin assemblage...", "size": 10, "citations": 0, "importance": 9.35, "imp_color_val": 0.19623655913978488, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["C. D. Da Silva", "Renato Hajenius Ach\u00e9 de Freitas"], "journal": "Continental Shelf Research", "fullTitle": "Trophic niche structure of a sea urchin assemblage in southeastern Brazil", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}, {"id": "10.1002/ecog.08252", "title": "Dietary partitioning mediates species coexistence ...", "size": 10, "citations": 0, "importance": 9.174999999999999, "imp_color_val": 0.17741935483870955, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Na Zang", "Bi-Lin Liu"], "journal": "Ecography", "fullTitle": "Dietary partitioning mediates species coexistence in the high seas area of northwest Pacific", "is_secondary": false, "is_core": false, "abstract": "Niche partitioning, manifesting along various axes of the ecological niche, is a fundamental mechanism mediating species coexistence in a system. However, the emergence of many species in marine ecosystems would face considerable constraints in achieving coexistence through spatiotemporal differentiation mechanisms under the framework of niche partitioning. Consequently, dietary specialization may be the key mechanism to mediate coexistence, but lacks empirical support, especially for the oceanic system exhibiting heterogeneity and phenological variability in resource availability. We herein used data from nine pelagic species (five fish and four squid) sampled from the high seas area of the northwest Pacific during the summer season, when they migrate there to optimize foraging efficiency and growth, and evaluated their niche partitioning in terms of dietary specialization. We measured the bulk carbon and nitrogen stable isotopes and essential fatty acids of the nine species to estimate the isotopic and nutritional niche spaces, and employed Hutchinson's n\u2010dimensional hypervolume framework to examine the degree of dietary specialization. Results revealed that pairwise overlap of isotopic niches was observed for all species, though some species occupied distinct isotopic niche spaces. In contrast, the nutritional niche space, estimated using essential fatty acids, was mostly separate for each species, coupled with small or zero overlap between paired species. Furthermore, the specialization index, estimated using either stable isotopes or essential fatty acids, was consistently large for the nine species, while nestedness was relatively low. These findings reveal that the nine species partition their nutritional niche spaces to mitigate the competition caused by dietary niche overlaps, coinciding with the mechanism of dietary specialization."}, {"id": "10.1002/jez.70122", "title": "The Single, the Whole, and the Pooled: Implication...", "size": 10, "citations": 0, "importance": 8.325000000000001, "imp_color_val": 0.08602150537634418, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["P. Balzani", "Nad\u00e8ge B\u00e9louard"], "journal": "Journal of Experimental Zoology Part A Ecological and Integrative Physiology", "fullTitle": "The Single, the Whole, and the Pooled: Implications of Tissue Choice for Stable Isotope Analysis", "is_secondary": false, "is_core": false, "abstract": "ABSTRACT In the exciting era of non\u2010invasive tissue sampling and data reuse via open access databases, it is increasingly challenging to ensure comparability of sample types for stable isotope analysis in ecology. According to the theoretical predictions about the changes in the stable isotope values between prey and consumers and tissue turnover rates, the ecological question alone should dictate the choice of the sample type used (single tissue, whole body, or pooled samples). However, the sample types have also been constrained by the body size, availability, or legal status of the study species, and stable isotope data sets are routinely obtained from a variety of sample types. While there is a general agreement that this practice may bias the ecological conclusions of stable isotope studies, the risks incurred have seldom been reviewed explicitly, let alone quantified. With both ethical aspects and open science opportunities arising in the field, the issues around sample types in stable isotope ecology must be tackled explicitly. We illustrate how comparing stable isotope values from different sample types affects niche analyses and diet reconstructions, and detail the consequences of pooling samples on stable isotope variance. We call for (1) a thorough consideration of the adequation between sample types and ecological questions, including in data harvesting from global databases, and (2) for the development of methodological studies around sample type issues and that of a systematic framework that incorporates the known variations between sample types in statistical analyses."}, {"id": "10.1111/1749-4877.70144", "title": "Spatial Patterns of Avian Stable Isotopes Reveal E...", "size": 10, "citations": 0, "importance": 9.275, "imp_color_val": 0.18817204301075272, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Yao-Hong Jia", "Chao Zhang"], "journal": "Integrative Zoology", "fullTitle": "Spatial Patterns of Avian Stable Isotopes Reveal Ecological Impacts of Climate and Land-Use Change.", "is_secondary": false, "is_core": false, "abstract": "Stable isotope analysis provides an integrated approach to tracing animal dietary sources and trophic structures while being sensitive to environmental and land-use changes. It therefore serves as a powerful tool for evaluating the interactions between animal resource use and environmental variation. However, spatial isotopic patterns across large numbers of species and their responses to climate change and anthropogenic activities remain poorly understood. Here, we applied a Bayesian mixed-effects modeling framework and isotopic niche analyses using feather samples from 766 individuals of 200 bird species in southwestern China (1958-2007) to assess how ecological, climatic, and anthropogenic factors jointly shaped the spatial patterns of feather carbon (\u03b41 3C) and nitrogen (\u03b41 5N) isotopes across taxa. The results revealed that the \u03b41 3C and \u03b41 5N values differed markedly across dietary and migratory guilds, highlighting distinct strategies of resource use and trophic organization among species. The feather \u03b41 5N values increased with increasing pasture coverage, suggesting a potential elevation of the baseline \u03b41 5N in grazing landscapes. \u03b41 5N also showed a positive trend with precipitation, indicating that wetter environments may be associated with elevated nitrogen isotopic baselines. Furthermore, isotopic niche analyses revealed that farmland habitats exhibited broader isotopic niches than forest habitats, especially for herbivores, highlighting the influence of agricultural expansion on resource use. Overall, this study demonstrates how ecological traits, climatic factors, and human disturbances jointly shape avian trophic patterns across taxa and scales, providing new insights into trophic structure and the consequences of land use change for ecosystem function across diverse ecosystems."}, {"id": "10.1002/ecs2.70678", "title": "Individual specialization and temporal changes in ...", "size": 10, "citations": 0, "importance": 10.925, "imp_color_val": 0.36559139784946243, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["No\u00e9mie Friscourt", "A. Walters"], "journal": "Ecosphere", "fullTitle": "Individual specialization and temporal changes in Antarctic fur seal trophic ecology from a multi\u2010tracer approach", "is_secondary": false, "is_core": false, "abstract": "Substantial individual variation in diet and foraging strategies can exist within populations. These differences can enhance individual foraging efficiency, reduce intraspecific competition, and provide fitness advantages that increase the resilience of a population. Understanding the extent and stability of individual variation, and its contribution to population niche dynamics, is therefore important for interpreting ecological responses, particularly under changing environmental conditions. We used bulk and compound\u2010specific stable isotope analyses together with tracking data to assess individual\u2010 and population\u2010level variation in the foraging strategies of adult female Antarctic fur seals ( Arctocephalus gazella ) from Marion Island (southern Indian Ocean), during the winter migration period, over a decade (2008\u20132018). We aimed to (1) determine the existence and degree of individual specialization within the population, (2) identify foraging strategies and assess potential influences of body size, and (3) evaluate the temporal stability of foraging strategies, trophic position, and the population isotopic niche, considering potential changes in isotopic baselines. Isotopic data from 129 whiskers from 80 individuals revealed four main foraging strategies, with individuals ranging from extreme specialists to generalists. Corresponding tracking data highlighted differences in the use of oceanographic features niches among these groups, notably in the time spent south or north of the Polar Front. Observed foraging patterns were not explained by body size but instead likely reflect a combination of intrinsic (e.g., energetic costs, experience, genetic legacy) and extrinsic factors (e.g., intra\u2010 and interspecific competition and environmental variability). Interannual fluctuations in the population's isotopic niche were also detected, potentially linked to changes in environmental conditions, highlighting the population's adaptability to ecosystem changes. Foraging strategies appear to be temporally stable, as 61% of the 31 females sampled over multiple years showed fidelity to foraging areas, and 74% in their resource use. This suggests that while the population exhibits adaptability to environmental variability, individual seals may consistently employ specific foraging behaviors to limit the potential costs of shifting foraging area and diet. Given the accelerating impacts of climate change on the Southern Ocean, this study underscores the value of stable isotope analysis of whiskers as a powerful, minimally invasive tool for long\u2010term ecological monitoring."}, {"id": "10.1007/s10641-026-01856-2", "title": "Ontogenetic shape variations are related to diet i...", "size": 10, "citations": 0, "importance": 18.0, "imp_color_val": 1.1263440860215055, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["Pablo Fajardo", "Carmen Barrios-Guzm\u00e1n"], "journal": "Environmental Biology of Fishes", "fullTitle": "Ontogenetic shape variations are related to diet in the drunk blenny Scartichthys variolatus (Blenniidae) from an oceanic island of South Pacific Ocean", "is_secondary": true, "is_core": true, "abstract": "No abstract available."}, {"id": "10.1016/j.fooweb.2025.e00429", "title": "The isotopic niche breadth of aquatic insects incr...", "size": 10, "citations": 0, "importance": 9.275, "imp_color_val": 0.18817204301075272, "year_color_val": 0.9629629629629629, "year": 2026, "authors": ["D. Castro", "Robert M. Hughes"], "journal": "Food Webs", "fullTitle": "The isotopic niche breadth of aquatic insects increases with elevation in neotropical mountain streams", "is_secondary": false, "is_core": false, "abstract": "No abstract available."}];
+        const links = [{"source": "10.1002/jez.70122", "target": "10.4319/lom.2009.7.740", "weight": 5.5}, {"source": "10.1007/s00227-024-04592-2", "target": "10.1098/rsbl.2009.0024", "weight": 6.5}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.4319/lom.2009.7.740", "weight": 13.5}, {"source": "10.3354/meps15107", "target": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "weight": 9.5}, {"source": "10.1016/j.csr.2026.105769", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1017/S0025315400002502", "weight": 9.5}, {"source": "10.3389/fmars.2023.1254461", "target": "10.1098/rsbl.2009.0024", "weight": 6.5}, {"source": "10.1016/j.marpolbul.2026.120429", "target": "10.4319/lom.2009.7.740", "weight": 5.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1007/s00442-003-1415-0", "weight": 6.5}, {"source": "10.1002/lno.70523", "target": "10.4319/lom.2009.7.740", "weight": 5.5}, {"source": "10.1002/ecs2.70678", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.5}, {"source": "10.1002/eap.70284", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1007/s11160-026-10105-9", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.3390/environments13100539", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1016/j.rsma.2026.105498", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.1080/02705060.2007.9665055", "target": "10.1038/35016565", "weight": 3.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.3354/meps12767", "weight": 9.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 15.0}, {"source": "10.1007/s00227-024-04592-2", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.1007/s10641-026-01856-2", "target": "10.1007/978-90-481-3354-3_14", "weight": 3.0}, {"source": "10.1080/02705060.2007.9665055", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.3389/fmars.2022.818088", "target": "10.1038/s41598-019-55719-1", "weight": 10.0}, {"source": "10.1007/s11160-026-10105-9", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.1016/j.ecolind.2026.115719", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.5}, {"source": "10.1111/j.1365-2656.2011.01806.x", "target": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "weight": 14.5}, {"source": "10.1146/annurev-ecolsys-102209-144726", "target": "10.4319/lom.2009.7.740", "weight": 12.0}, {"source": "10.3389/fmars.2022.818088", "target": "10.1098/rspb.2005.3115", "weight": 8.5}, {"source": "10.3354/meps15107", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 15.0}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 19.5}, {"source": "10.3354/meps15107", "target": "10.1098/rspb.2005.3115", "weight": 11.5}, {"source": "10.1016/j.jmarsys.2026.104253", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1016/j.jas.2026.106687", "target": "10.4319/lom.2009.7.740", "weight": 7.0}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1086/343878", "weight": 14.5}, {"source": "10.3389/fphys.2022.1038064", "target": "10.1098/rsbl.2009.0024", "weight": 6.5}, {"source": "10.1016/j.ecolind.2026.115719", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 9.0}, {"source": "10.1002/lno.70523", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1098/rsbl.2009.0024", "target": "10.1098/rspb.2005.3115", "weight": 11.5}, {"source": "10.1080/10256016.2026.2728770", "target": "10.1086/343878", "weight": 7.0}, {"source": "10.1098/rspb.2005.3115", "target": "10.1007/s00442-003-1270-z", "weight": 8.0}, {"source": "10.1016/j.jmarsys.2026.104253", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.1007/s00227-026-04920-8", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 16.0}, {"source": "10.1007/s00227-013-2284-7", "target": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "weight": 5.5}, {"source": "10.1007/s00227-024-04571-7", "target": "10.1098/rsbl.2009.0024", "weight": 6.5}, {"source": "10.1111/1365-2435.13530", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1111/1365-2656.13333", "weight": 9.5}, {"source": "10.3354/meps15107", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 14.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1086/343878", "weight": 9.5}, {"source": "10.1016/j.fishres.2023.106921", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1002/9780470995310", "weight": 9.0}, {"source": "10.1086/343878", "target": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "weight": 6.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.3389/fmars.2022.818088", "weight": 6.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 14.5}, {"source": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "target": "10.1038/35016565", "weight": 8.5}, {"source": "10.1002/ecs2.70678", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 10.0}, {"source": "10.1111/j.1365-2656.2011.01806.x", "target": "10.1086/343878", "weight": 15.0}, {"source": "10.1098/rspb.2005.3115", "target": "10.1017/S0025315400002502", "weight": 8.0}, {"source": "10.1007/s00227-026-04904-8", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.3390/biology15191699", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1002/jez.70122", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.3389/fphys.2022.1038064", "target": "10.1098/rspb.2005.3115", "weight": 8.0}, {"source": "10.3390/environments13100539", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.1016/j.jas.2026.106687", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 13.0}, {"source": "10.1007/s00227-024-04592-2", "target": "10.1098/rspb.2005.3115", "weight": 8.0}, {"source": "10.3389/fmars.2023.1254461", "target": "10.1038/s41598-019-55719-1", "weight": 9.5}, {"source": "10.1111/1365-2656.13333", "target": "10.1098/rsbl.2009.0024", "weight": 10.0}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 16.0}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1007/s00442-003-1270-z", "weight": 6.0}, {"source": "10.1016/j.jas.2026.106687", "target": "10.1086/343878", "weight": 8.0}, {"source": "10.1111/j.1469-185X.2011.00208.x", "target": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "weight": 11.0}, {"source": "10.1016/j.ecolind.2026.115719", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 10.0}, {"source": "10.3354/meps15107", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 13.0}, {"source": "10.3389/fmars.2023.1254461", "target": "10.1098/rspb.2005.3115", "weight": 8.0}, {"source": "10.1007/s00227-024-04571-7", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.3389/fmars.2020.616116", "target": "10.1098/rsbl.2009.0024", "weight": 6.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1007/978-90-481-3354-3_14", "weight": 9.5}, {"source": "10.3390/environments13100539", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1080/10256016.2026.2728770", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 12.0}, {"source": "10.1007/s00227-013-2284-7", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.0}, {"source": "10.1007/s11160-026-10105-9", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 11.0}, {"source": "10.1007/s10641-026-01856-2", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1111/1365-2435.13530", "target": "10.1890/0012-9658(2002)083[2936:MILRS]2.0.CO;2", "weight": 2.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1017/S0025315400002502", "weight": 6.0}, {"source": "10.1111/j.1365-2656.2011.01806.x", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 16.5}, {"source": "10.1002/lno.70523", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1098/rsbl.2009.0024", "weight": 13.0}, {"source": "10.1007/s00227-026-04920-8", "target": "10.1007/s00442-003-1415-0", "weight": 4.0}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1038/35016565", "weight": 6.0}, {"source": "10.64898/2026.04.29.721722", "target": "10.1038/s41598-019-55719-1", "weight": 12.5}, {"source": "10.1002/ecs2.70678", "target": "10.4319/lom.2009.7.740", "weight": 6.0}, {"source": "10.3389/fmars.2020.616116", "target": "10.1111/1365-2656.13333", "weight": 6.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1098/rspb.2005.3115", "weight": 11.0}, {"source": "10.3389/fphys.2022.1038064", "target": "10.1038/s41598-019-55719-1", "weight": 9.5}, {"source": "10.1016/j.fishres.2023.106921", "target": "10.1098/rspb.2005.3115", "weight": 8.0}, {"source": "10.1016/j.jas.2026.106687", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 9.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.3354/meps12767", "weight": 6.0}, {"source": "10.1007/s10641-026-01856-2", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.3354/meps15107", "target": "10.4319/lom.2009.7.740", "weight": 9.0}, {"source": "10.1002/jez.70122", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.1016/j.jmarsys.2026.104283", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.3389/fmars.2022.818088", "target": "10.1098/rsbl.2009.0024", "weight": 7.0}, {"source": "10.1007/s00227-026-04904-8", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.3390/biology15191699", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.3354/meps15107", "target": "10.1098/rsbl.2009.0024", "weight": 10.0}, {"source": "10.1016/j.rsma.2026.105498", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1016/j.jas.2026.106687", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 10.0}, {"source": "10.1080/10256016.2026.2728770", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.5}, {"source": "10.3354/meps15107", "target": "10.1002/9780470995310", "weight": 6.0}, {"source": "10.1016/j.rsma.2026.105498", "target": "10.1098/rspb.2005.3115", "weight": 8.0}, {"source": "10.1016/j.marpolbul.2026.120429", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 14.0}, {"source": "10.1007/s00227-024-04571-7", "target": "10.1098/rspb.2005.3115", "weight": 8.0}, {"source": "10.1016/j.csr.2026.105769", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1016/j.jmarsys.2026.104253", "target": "10.1007/s00442-003-1415-0", "weight": 3.5}, {"source": "10.1002/ecog.08252", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1098/rspb.2005.3115", "weight": 14.5}, {"source": "10.1002/eap.70284", "target": "10.1086/343878", "weight": 6.5}, {"source": "10.1080/10256016.2026.2728770", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 10.0}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1111/1749-4877.70144", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1002/ecog.08252", "target": "10.1086/343878", "weight": 6.5}, {"source": "10.1016/j.marpolbul.2026.120429", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.1111/1365-2656.13333", "target": "10.1038/s41598-019-55719-1", "weight": 13.0}, {"source": "10.1016/j.jas.2026.106687", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 12.5}, {"source": "10.1016/j.jmarsys.2026.104283", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.1002/ecs2.70678", "target": "10.1086/343878", "weight": 7.0}, {"source": "10.1007/s00227-026-04904-8", "target": "10.1007/s00442-003-1415-0", "weight": 3.5}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.1016/j.fishres.2023.106921", "target": "10.1038/s41598-019-55719-1", "weight": 9.5}, {"source": "10.1111/1749-4877.70144", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 8.0}, {"source": "10.1007/s00227-026-04920-8", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 12.0}, {"source": "10.1146/annurev-ecolsys-102209-144726", "target": "10.1111/j.0021-8790.2004.00861.x", "weight": 14.5}, {"source": "10.64898/2026.04.29.721722", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 12.5}, {"source": "10.3354/meps15107", "target": "10.1111/1365-2656.13333", "weight": 10.0}, {"source": "10.1016/j.jmarsys.2026.104283", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 8.5}, {"source": "10.3389/fmars.2020.616116", "target": "10.1038/s41598-019-55719-1", "weight": 9.5}, {"source": "10.1007/s00227-026-04920-8", "target": "10.1086/343878", "weight": 7.0}, {"source": "10.1016/j.fooweb.2025.e00429", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.3354/meps15107", "target": "10.1007/978-90-481-3354-3_14", "weight": 6.5}, {"source": "10.1111/1749-4877.70144", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}, {"source": "10.1890/0012-9658(2007)88[42:CSIRPF]2.0.CO;2", "target": "10.1890/0012-9658(2002)083[0703:USITET]2.0.CO;2", "weight": 11.5}, {"source": "10.1111/1365-2656.13333", "target": "10.3354/meps12767", "weight": 6.5}, {"source": "10.1016/j.ecolind.2026.115719", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 12.0}, {"source": "10.1038/s41598-019-55719-1", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 17.5}, {"source": "10.1002/ecog.08252", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1080/02705060.2007.9665055", "target": "10.1007/s00442-003-1270-z", "weight": 3.0}, {"source": "10.1016/j.csr.2026.105769", "target": "10.1111/j.1469-185X.2011.00208.x", "weight": 11.0}, {"source": "10.1002/eap.70284", "target": "10.1111/j.1365-2656.2011.01806.x", "weight": 11.5}, {"source": "10.3390/biology15191699", "target": "10.1146/annurev-ecolsys-102209-144726", "weight": 9.5}];
+        const stats = {"Run Name": "20261028_0015", "Total Graph Nodes": 53, "Initial Core Nodes": 6, "Secondary Core Nodes": 16, "Peripheral Nodes": 31, "Total Graph Edges": 150, "Total Papers Scraped": 922, "Max Results / Query": 50, "Max Iterations": 5, "Promotability Start Pct": "15.0%", "Peripheral Vote Base": 0.5, "Core Award Multiplier": 0.05, "Iter Penalty Factor": 0.5, "Min Year Filter": 2000, "Caching": "Enabled", "Network Filter Parameter": 0.2};
+
+        const statsContent = document.getElementById('stats-content');
+        for (const [key, value] of Object.entries(stats)) {
+            const row = document.createElement('div');
+            row.className = 'stat-row';
+            row.innerHTML = `<span class="stat-label">${key}</span><span class="stat-value">${value}</span>`;
+            statsContent.appendChild(row);
+        }
+
+        const statsHeader = document.getElementById('stats-header');
+        statsHeader.addEventListener('click', () => {
+            statsContent.classList.toggle('active');
+            document.getElementById('stats-chevron').textContent = statsContent.classList.contains('active') ? '▲' : '▼';
+
+            if (statsContent.classList.contains('active')) {
+                setTimeout(() => {
+                    document.getElementById('sidebar').scrollTo({ top: document.getElementById('sidebar').scrollHeight, behavior: 'smooth' });
+                }, 50);
+            }
+        });
+
+        // ------------------ USER LIST MANAGEMENT ------------------
+            const userList = new Map();
+            let currentSelectedNode = null;
+
+            const btnAdd = document.getElementById('btn-add-list');
+            const listCount = document.getElementById('user-list-count');
+            const btnExport = document.getElementById('btn-export-list');
+
+            const savedListHeader = document.getElementById('saved-list-header');
+            const savedListContent = document.getElementById('saved-list-content');
+            const savedListChevron = document.getElementById('saved-list-chevron');
+
+            // Toggle the saved list display
+            savedListHeader.addEventListener('click', () => {
+                savedListContent.classList.toggle('active');
+                savedListChevron.textContent = savedListContent.classList.contains('active') ? '▲' : '▼';
+            });
+
+            // Function to refresh the HTML list of saved papers
+            function updateSavedListUI() {
+                savedListContent.innerHTML = '';
+                for (const d of userList.values()) {
+                    const item = document.createElement('div');
+                    item.className = 'saved-list-item';
+                    item.innerHTML = `
+                <div class="saved-list-item-title">${d.fullTitle}</div>
+                <div class="saved-list-item-meta">${d.year} | ${d.authors[0] || 'Unknown'} et al.</div>
+            `;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectNode(d); // We will define this next
+                    });
+                    savedListContent.appendChild(item);
+                }
+            }
+
+            btnAdd.addEventListener('click', () => {
+                if (!currentSelectedNode) return;
+                if (userList.has(currentSelectedNode.id)) {
+                    userList.delete(currentSelectedNode.id);
+                    btnAdd.textContent = 'Add Selected Paper';
+                    btnAdd.style.borderColor = '#30363d';
+                } else {
+                    userList.set(currentSelectedNode.id, currentSelectedNode);
+                    btnAdd.textContent = 'Remove from List';
+                    btnAdd.style.borderColor = '#eb4a40';
+                }
+                listCount.textContent = userList.size;
+                updateSavedListUI();
+            });
+
+            function downloadBlob(content, filename, contentType) {
+                const blob = new Blob([content], { type: contentType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function escapeCSV(val) {
+                if (val === null || val === undefined) return '""';
+                const str = String(val);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+            }
+
+            btnExport.addEventListener('click', () => {
+                if (userList.size === 0) {
+                    alert('Your saved list is empty. Click a paper and add it first!');
+                    return;
+                }
+
+                const format = document.getElementById('export-format').value;
+                const items = Array.from(userList.values());
+
+                if (format === 'csv') {
+                    const header = "doi,title,authors,year,journal,citation_count,importance_score,role\n";
+                    const rows = items.map(d => {
+                        let role = d.importance === 999 ? 'Core (Initial Seed)' : (d.is_secondary ? 'Core (Secondary)' : 'Peripheral');
+                        return [d.id, d.fullTitle, (d.authors || []).join('; '), d.year, d.journal, d.citations, d.importance, role]
+                            .map(escapeCSV).join(',');
+                    });
+                    downloadBlob(header + rows.join('\n'), 'citation_network_user_list.csv', 'text/csv');
+                }
+                else if (format === 'bibtex') {
+                    const content = items.map(d => {
+                        const authorStr = (d.authors || []).join(' and ');
+                        return `@article{${d.id},\n  title={${d.fullTitle}},\n  author={${authorStr}},\n  journal={${d.journal}},\n  year={${d.year}},\n  url={https://doi.org/${d.id}}\n}`;
+                    }).join('\n\n');
+                    downloadBlob(content, 'user_list.bib', 'text/plain');
+                }
+                else if (format === 'doi_txt' || format === 'doi_clipboard') {
+                    const content = items.map(d => d.id).join('\n');
+                    if (format === 'doi_txt') downloadBlob(content, 'user_list_dois.txt', 'text/plain');
+                    else navigator.clipboard.writeText(content).then(() => alert('DOIs copied to clipboard!'));
+                }
+                else if (format === 'apa_txt' || format === 'apa_clipboard') {
+                    const content = items.map(d => {
+                        const authorStr = (d.authors || []).join(', ');
+                        return `${authorStr} (${d.year}). ${d.fullTitle}. ${d.journal}. https://doi.org/${d.id}`;
+                    }).join('\n\n');
+                    if (format === 'apa_txt') downloadBlob(content, 'user_list_apa.txt', 'text/plain');
+                    else navigator.clipboard.writeText(content).then(() => alert('APA citations copied to clipboard!'));
+                }
+            });
+
+        // ------------------ D3 VISUALIZATION ------------------
+        const width = document.getElementById('network').clientWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select('#network').append('svg').attr('width', width).attr('height', height);
+        const g = svg.append('g');
+
+        svg.call(d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => g.attr('transform', e.transform)));
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto")
+            .attr("markerWidth", 8).attr("markerHeight", 8).attr("xoverflow", "visible")
+            .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#5c646c").style("stroke", "none");
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrowhead-dimmed").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto")
+            .attr("markerWidth", 8).attr("markerHeight", 8).attr("xoverflow", "visible")
+            .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#5c646c").attr("fill-opacity", "0.05").style("stroke", "none");
+
+        const maxWeight = Math.max(1, d3.max(links, d => d.weight) || 1);
+
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id)
+                .distance(d => {
+                    const norm = Math.log1p(d.weight) / Math.log1p(maxWeight);
+                    return 80 - (norm * 60);
+                })
+                .strength(d => {
+                    const norm = Math.log1p(d.weight) / Math.log1p(maxWeight);
+                    return 0.05 + (norm * 0.25);
+                })
+            )
+            .force('charge', d3.forceManyBody().strength(-500).distanceMax(400))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => d.size + 10));
+
+        const linkGroup = g.selectAll('.link-group').data(links).enter().append('g').attr('class', 'link-group');
+        const link = linkGroup.append('line').attr("marker-end", "url(#arrowhead)");
+
+        const colorScale = d3.scaleLinear()
+            .domain([1, 0.83, 0.66, 0.5, 0.33, 0.16, 0])
+            .range(['#D1EEEAFF', '#A8DBD9FF', '#85C4C9FF', '#68ABB8FF', '#4F90A6FF', '#3B738FFF', '#2A5674FF']);
+
+        function selectNode(d) {
+            showInfo(d);
+            const connected = new Set([d.id]);
+
+            linkGroup.style('opacity', l => {
+                if (l.source.id === d.id || l.target.id === d.id) {
+                    connected.add(l.source.id);
+                    connected.add(l.target.id);
+                    return 1.0;
+                }
+                return 0.05;
+            });
+
+            link.attr("marker-end", l => (l.source.id === d.id || l.target.id === d.id) ? "url(#arrowhead)" : "url(#arrowhead-dimmed)");
+            node.style('opacity', n => connected.has(n.id) ? 1.0 : 0.1).classed('active-node', n => n.id === d.id);
+        }
+
+        const node = g.selectAll('circle').data(nodes).enter().append('circle')
+            .attr('r', d => d.size)
+            .attr('fill', d => {
+                if (d.importance === 999) return '#fcde9c';
+                if (d.is_secondary) return '#eb4a40';
+                return colorScale(d.imp_color_val);
+            })
+            .attr('stroke', '#30363d').attr('stroke-width', 1)
+            .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended))
+
+            .on('click', (event, d) => {
+                event.stopPropagation();
+                selectNode(d);
+            })
+            .on('mouseover', (event, d) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.innerHTML = `<strong>${d.fullTitle.substring(0, 60)}${d.fullTitle.length > 60 ? '...' : ''}</strong><br><span style="color:#8b949e; font-size:10px;">Cites: ${d.citations} | Score: ${d.importance.toFixed(2)} | Year: ${d.year}</span>`;
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.pageX + 10 + 'px'; tooltip.style.top = event.pageY + 10 + 'px';
+            })
+            .on('mousemove', (e) => {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY + 10 + 'px';
+            })
+            .on('mouseout', () => document.getElementById('tooltip').style.display = 'none');
+
+        // Prevent overlay clicks from deselecting nodes
+        d3.select('#overlay-controls').on('click', (e) => {
+            e.stopPropagation();
+        });
+
+        d3.select('#color-mode').on('change', function () {
+            const mode = this.value;
+            const isYear = mode === 'year';
+
+            node.transition().duration(750)
+                .attr('fill', d => {
+                    if (d.is_core || d.is_secondary) return (d.importance === 999) ? '#fcde9c' : '#eb4a40';
+                    return colorScale(isYear ? d.year_color_val : d.imp_color_val);
+                });
+
+            document.getElementById('legend-min').textContent = isYear ? 'Oldest' : 'Lower Score';
+            document.getElementById('legend-max').textContent = isYear ? 'Newest' : 'Higher Score';
+        });
+
+        svg.on('click', () => {
+            document.getElementById('info').classList.remove('active');
+            document.getElementById('sidebar-placeholder').style.display = 'block';
+            node.style('opacity', 1.0).classed('active-node', false);
+            linkGroup.style('opacity', 1.0);
+            link.attr('marker-end', "url(#arrowhead)");
+            
+            // Disable list button when deselecting
+            currentSelectedNode = null;
+            btnAdd.disabled = true;
+            btnAdd.textContent = 'Add Selected Paper';
+            btnAdd.style.borderColor = '#30363d';
+        });
+
+        simulation.on('tick', () => {
+            link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                .attr('x2', d => {
+                    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0) return d.target.x;
+                    return d.source.x + dx * (distance - d.target.size) / distance;
+                })
+                .attr('y2', d => {
+                    const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance === 0) return d.target.y;
+                    return d.source.y + dy * (distance - d.target.size) / distance;
+                });
+            node.attr('cx', d => d.x).attr('cy', d => d.y);
+        });
+
+        function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+        function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+        function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+        function showInfo(d) {
+            document.getElementById('sidebar-placeholder').style.display = 'none';
+            document.getElementById('title').textContent = d.fullTitle;
+            document.getElementById('authors').textContent = d.authors.join(', ') || 'Unknown';
+            document.getElementById('year').textContent = d.year;
+            document.getElementById('journal').textContent = d.journal;
+            document.getElementById('abstract').textContent = d.abstract || 'No abstract available.';
+            document.getElementById('citations').textContent = d.citations;
+            document.getElementById('importance').textContent = d.importance === 999 ? 'SEED' : d.importance.toFixed(2);
+            let roleText = 'Peripheral';
+            if (d.importance === 999) roleText = 'Core (Initial)';
+            else if (d.is_secondary) roleText = 'Core (Secondary)';
+            document.getElementById('role').textContent = roleText;
+            const doiLink = document.getElementById('doi-link');
+            doiLink.href = `https://doi.org/${d.id}`; doiLink.textContent = d.id;
+            document.getElementById('info').classList.add('active');
+
+            // Update Add to List button state
+            currentSelectedNode = d;
+            btnAdd.disabled = false;
+            if (userList.has(d.id)) {
+                btnAdd.textContent = 'Remove from List';
+                btnAdd.style.borderColor = '#eb4a40';
+            } else {
+                btnAdd.textContent = 'Add Selected Paper';
+                btnAdd.style.borderColor = '#30363d';
+            }
+        }
+    </script>
+</body>
+
+</html>
