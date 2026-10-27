@@ -47,6 +47,7 @@ class Publication:
     journal: str
     citation_count: int
     importance_score: float = 0.0
+    abstract: str = "No abstract available."  # Add this line
 
     def to_dict(self) -> Dict:
         return {
@@ -58,6 +59,7 @@ class Publication:
             "journal": self.journal,
             "citation_count": self.citation_count,
             "importance_score": round(self.importance_score, 4),
+            "abstract": self.abstract  # Add this line
         }
 
 
@@ -82,6 +84,8 @@ class MetadataRetriever:
                 else "Unknown"
             )
 
+            abstract_raw = data.get("abstract", "No abstract available.")
+
             return Publication(
                 doi=doi,
                 title=clean_text(title_raw),
@@ -92,6 +96,7 @@ class MetadataRetriever:
                 year=data.get("issued", {}).get("date-parts", [[2000]])[0][0],
                 journal=clean_text(journal_raw),
                 citation_count=data.get("is-referenced-by-count", 0),
+                abstract=clean_text(abstract_raw)
             )
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
@@ -138,7 +143,7 @@ class CitationNetworkBuilder:
             time.sleep(0.1)
             url = f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}/citations"
             params = {
-                "fields": "title,authors,year,venue,citationCount,externalIds",
+                "fields": "title,authors,year,venue,citationCount,externalIds,abstract", 
                 "limit": self.config.max_results_per_query,
             }
 
@@ -173,6 +178,8 @@ class CitationNetworkBuilder:
                     title_raw = citing_paper.get("title", "Unknown") or "Unknown"
                     journal_raw = citing_paper.get("venue", "Unknown") or "Unknown"
 
+                    abstract_raw = citing_paper.get("abstract") or "No abstract available."
+
                     pub = Publication(
                         doi=ref_doi,
                         title=clean_text(title_raw),
@@ -180,6 +187,7 @@ class CitationNetworkBuilder:
                         year=year,
                         journal=clean_text(journal_raw),
                         citation_count=citing_paper.get("citationCount", 0) or 0,
+                        abstract=clean_text(abstract_raw)
                     )
                     downstream[ref_doi] = pub
             return downstream

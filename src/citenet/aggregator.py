@@ -336,6 +336,7 @@ class DataExporter:
             writer.writeheader()
             for pub in sorted_pubs:
                 row = pub.to_dict()
+                row.pop("abstract", None)
                 if pub.doi in seed_origins:
                     row["role"] = (
                         "Core (Initial Seed)"

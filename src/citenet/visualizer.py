@@ -156,6 +156,7 @@ class NetworkVisualizer:
                     "fullTitle": pub.title,
                     "is_secondary": is_secondary,
                     "is_core": doi in self.seed_origins,
+                    "abstract": pub.abstract
                 }
             )
         return json.dumps(nodes)

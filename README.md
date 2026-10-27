@@ -67,8 +67,8 @@ citenet -i example.bib --recursive-threshold 0.15 --penalty-factor 0.5 --core-aw
 | -------------- | ---------------------------------------------------------------- | ------------- | ----- |
 | `--run-name`   | Customize the basename of output files                           | yyyyMMDD_hhmm | *Any* |
 | `--output-dir` | Defines the folder where results are saved                       | `./output`    | *Any* |
-| `--no-csv`     | Skip exporting the csv file containing all scrapped publications | *N/A*         | *N/A* |
-| `--no-json`    | Skip exporting the raw json network structure                    | *N/A*         | *N/A* |
+| `--csv`     | Export the csv file containing all scrapped publications | *N/A*         | *N/A* |
+| `--json`    | Export the raw json network structure                    | *N/A*         | *N/A* |
 
 
 ### Network Filtering & API Parameters

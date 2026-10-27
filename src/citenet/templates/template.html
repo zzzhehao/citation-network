@@ -259,6 +259,129 @@
             word-break: break-word;
         }
 
+        /* User List Panel */
+        .user-list-panel {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .user-list-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #8b949e;
+            color: #ffffff;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .export-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .export-controls select {
+            flex: 2;
+        }
+
+        .export-controls .btn {
+            flex: 1;
+        }
+
+        /* Saved List Items Display */
+        .saved-list-container {
+            margin-top: 15px;
+            border-top: 1px solid #30363d;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .saved-list-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .saved-list-header:hover {
+            color: #e6edf3;
+        }
+
+        .saved-list-content {
+            margin-top: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .saved-list-content.active {
+            display: flex;
+        }
+
+        .saved-list-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .saved-list-item:hover {
+            border-color: #79c0ff;
+        }
+
+        .saved-list-item-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #e6edf3;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .saved-list-item-meta {
+            font-size: 10px;
+            color: #8b949e;
+        }
+
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -368,12 +491,44 @@
                                 id="role"></span></div>
                         <div class="meta-row"><span class="meta-label">DOI:</span><a class="doi-link" id="doi-link"
                                 target="_blank"></a></div>
+                        <div class="meta-row">
+                            <span class="meta-label" style="display: block; margin-bottom: 4px;">Abstract:</span>
+                            <span class="meta-value" id="abstract"
+                                style="display: block; font-size: 11px; color: #8b949e; line-height: 1.4; max-height: 200px; overflow-y: auto; text-align: justify;"></span>
+                        </div>
                     </div>
                 </div>
 
                 <div id="sidebar-placeholder"
                     style="color: #8b949e; font-size: 13px; text-align: center; margin-top: 40px; padding: 20px;">
                     Click any node in the network to view its publication details here.
+                </div>
+            </div>
+
+            <div class="user-list-panel">
+                <div class="user-list-header">User Saved Papers (<span id="user-list-count">0</span>)</div>
+                <button id="btn-add-list" class="btn" disabled>Add Selected Paper</button>
+            
+                <div class="export-controls">
+                    <select id="export-format">
+                        <option value="csv">Export as CSV</option>
+                        <option value="bibtex">Export as BibTeX</option>
+                        <option value="doi_txt">DOI only (.txt)</option>
+                        <option value="doi_clipboard">DOI only (Clipboard)</option>
+                        <option value="apa_txt">APA 7 (.txt)</option>
+                        <option value="apa_clipboard">APA 7 (Clipboard)</option>
+                    </select>
+                    <button id="btn-export-list" class="btn">Export</button>
+                </div>
+
+                <div class="saved-list-container">
+                    <div class="saved-list-header" id="saved-list-header">
+                        <span>View Saved Papers</span>
+                        <span id="saved-list-chevron">▼</span>
+                    </div>
+                    <div class="saved-list-content" id="saved-list-content">
+                        <!-- Saved items will be injected here -->
+                    </div>
                 </div>
             </div>
 
@@ -415,6 +570,116 @@
                 }, 50);
             }
         });
+
+        // ------------------ USER LIST MANAGEMENT ------------------
+            const userList = new Map();
+            let currentSelectedNode = null;
+
+            const btnAdd = document.getElementById('btn-add-list');
+            const listCount = document.getElementById('user-list-count');
+            const btnExport = document.getElementById('btn-export-list');
+
+            const savedListHeader = document.getElementById('saved-list-header');
+            const savedListContent = document.getElementById('saved-list-content');
+            const savedListChevron = document.getElementById('saved-list-chevron');
+
+            // Toggle the saved list display
+            savedListHeader.addEventListener('click', () => {
+                savedListContent.classList.toggle('active');
+                savedListChevron.textContent = savedListContent.classList.contains('active') ? '▲' : '▼';
+            });
+
+            // Function to refresh the HTML list of saved papers
+            function updateSavedListUI() {
+                savedListContent.innerHTML = '';
+                for (const d of userList.values()) {
+                    const item = document.createElement('div');
+                    item.className = 'saved-list-item';
+                    item.innerHTML = `
+                <div class="saved-list-item-title">${d.fullTitle}</div>
+                <div class="saved-list-item-meta">${d.year} | ${d.authors[0] || 'Unknown'} et al.</div>
+            `;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectNode(d); // We will define this next
+                    });
+                    savedListContent.appendChild(item);
+                }
+            }
+
+            btnAdd.addEventListener('click', () => {
+                if (!currentSelectedNode) return;
+                if (userList.has(currentSelectedNode.id)) {
+                    userList.delete(currentSelectedNode.id);
+                    btnAdd.textContent = 'Add Selected Paper';
+                    btnAdd.style.borderColor = '#30363d';
+                } else {
+                    userList.set(currentSelectedNode.id, currentSelectedNode);
+                    btnAdd.textContent = 'Remove from List';
+                    btnAdd.style.borderColor = '#eb4a40';
+                }
+                listCount.textContent = userList.size;
+                updateSavedListUI();
+            });
+
+            function downloadBlob(content, filename, contentType) {
+                const blob = new Blob([content], { type: contentType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function escapeCSV(val) {
+                if (val === null || val === undefined) return '""';
+                const str = String(val);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+            }
+
+            btnExport.addEventListener('click', () => {
+                if (userList.size === 0) {
+                    alert('Your saved list is empty. Click a paper and add it first!');
+                    return;
+                }
+
+                const format = document.getElementById('export-format').value;
+                const items = Array.from(userList.values());
+
+                if (format === 'csv') {
+                    const header = "doi,title,authors,year,journal,citation_count,importance_score,role\n";
+                    const rows = items.map(d => {
+                        let role = d.importance === 999 ? 'Core (Initial Seed)' : (d.is_secondary ? 'Core (Secondary)' : 'Peripheral');
+                        return [d.id, d.fullTitle, (d.authors || []).join('; '), d.year, d.journal, d.citations, d.importance, role]
+                            .map(escapeCSV).join(',');
+                    });
+                    downloadBlob(header + rows.join('\n'), 'citation_network_user_list.csv', 'text/csv');
+                }
+                else if (format === 'bibtex') {
+                    const content = items.map(d => {
+                        const authorStr = (d.authors || []).join(' and ');
+                        return `@article{${d.id},\n  title={${d.fullTitle}},\n  author={${authorStr}},\n  journal={${d.journal}},\n  year={${d.year}},\n  url={https://doi.org/${d.id}}\n}`;
+                    }).join('\n\n');
+                    downloadBlob(content, 'user_list.bib', 'text/plain');
+                }
+                else if (format === 'doi_txt' || format === 'doi_clipboard') {
+                    const content = items.map(d => d.id).join('\n');
+                    if (format === 'doi_txt') downloadBlob(content, 'user_list_dois.txt', 'text/plain');
+                    else navigator.clipboard.writeText(content).then(() => alert('DOIs copied to clipboard!'));
+                }
+                else if (format === 'apa_txt' || format === 'apa_clipboard') {
+                    const content = items.map(d => {
+                        const authorStr = (d.authors || []).join(', ');
+                        return `${authorStr} (${d.year}). ${d.fullTitle}. ${d.journal}. https://doi.org/${d.id}`;
+                    }).join('\n\n');
+                    if (format === 'apa_txt') downloadBlob(content, 'user_list_apa.txt', 'text/plain');
+                    else navigator.clipboard.writeText(content).then(() => alert('APA citations copied to clipboard!'));
+                }
+            });
 
         // ------------------ D3 VISUALIZATION ------------------
         const width = document.getElementById('network').clientWidth;
@@ -459,6 +724,23 @@
             .domain([1, 0.83, 0.66, 0.5, 0.33, 0.16, 0])
             .range(['#D1EEEAFF', '#A8DBD9FF', '#85C4C9FF', '#68ABB8FF', '#4F90A6FF', '#3B738FFF', '#2A5674FF']);
 
+        function selectNode(d) {
+            showInfo(d);
+            const connected = new Set([d.id]);
+
+            linkGroup.style('opacity', l => {
+                if (l.source.id === d.id || l.target.id === d.id) {
+                    connected.add(l.source.id);
+                    connected.add(l.target.id);
+                    return 1.0;
+                }
+                return 0.05;
+            });
+
+            link.attr("marker-end", l => (l.source.id === d.id || l.target.id === d.id) ? "url(#arrowhead)" : "url(#arrowhead-dimmed)");
+            node.style('opacity', n => connected.has(n.id) ? 1.0 : 0.1).classed('active-node', n => n.id === d.id);
+        }
+
         const node = g.selectAll('circle').data(nodes).enter().append('circle')
             .attr('r', d => d.size)
             .attr('fill', d => {
@@ -471,18 +753,7 @@
 
             .on('click', (event, d) => {
                 event.stopPropagation();
-                showInfo(d);
-                const connected = new Set([d.id]);
-
-                linkGroup.style('opacity', l => {
-                    if (l.source.id === d.id || l.target.id === d.id) {
-                        connected.add(l.source.id); connected.add(l.target.id);
-                        return 1.0;
-                    }
-                    return 0.05;
-                });
-                link.attr("marker-end", l => (l.source.id === d.id || l.target.id === d.id) ? "url(#arrowhead)" : "url(#arrowhead-dimmed)");
-                node.style('opacity', n => connected.has(n.id) ? 1.0 : 0.1).classed('active-node', n => n.id === d.id);
+                selectNode(d);
             })
             .on('mouseover', (event, d) => {
                 const tooltip = document.getElementById('tooltip');
@@ -521,6 +792,12 @@
             node.style('opacity', 1.0).classed('active-node', false);
             linkGroup.style('opacity', 1.0);
             link.attr('marker-end', "url(#arrowhead)");
+            
+            // Disable list button when deselecting
+            currentSelectedNode = null;
+            btnAdd.disabled = true;
+            btnAdd.textContent = 'Add Selected Paper';
+            btnAdd.style.borderColor = '#30363d';
         });
 
         simulation.on('tick', () => {
@@ -550,6 +827,7 @@
             document.getElementById('authors').textContent = d.authors.join(', ') || 'Unknown';
             document.getElementById('year').textContent = d.year;
             document.getElementById('journal').textContent = d.journal;
+            document.getElementById('abstract').textContent = d.abstract || 'No abstract available.';
             document.getElementById('citations').textContent = d.citations;
             document.getElementById('importance').textContent = d.importance === 999 ? 'SEED' : d.importance.toFixed(2);
             let roleText = 'Peripheral';
@@ -559,6 +837,17 @@
             const doiLink = document.getElementById('doi-link');
             doiLink.href = `https://doi.org/${d.id}`; doiLink.textContent = d.id;
             document.getElementById('info').classList.add('active');
+
+            // Update Add to List button state
+            currentSelectedNode = d;
+            btnAdd.disabled = false;
+            if (userList.has(d.id)) {
+                btnAdd.textContent = 'Remove from List';
+                btnAdd.style.borderColor = '#eb4a40';
+            } else {
+                btnAdd.textContent = 'Add Selected Paper';
+                btnAdd.style.borderColor = '#30363d';
+            }
         }
     </script>
 </body>
