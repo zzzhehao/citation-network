@@ -259,6 +259,61 @@
             word-break: break-word;
         }
 
+        /* User List Panel */
+        .user-list-panel {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .user-list-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #30363d;
+            border-color: #8b949e;
+            color: #ffffff;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .export-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .export-controls select {
+            flex: 2;
+        }
+
+        .export-controls .btn {
+            flex: 1;
+        }
+
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -382,6 +437,23 @@
                 </div>
             </div>
 
+            <div class="user-list-panel">
+                <div class="user-list-header">User Saved Papers (<span id="user-list-count">0</span>)</div>
+                <button id="btn-add-list" class="btn" disabled>Add Selected Paper</button>
+            
+                <div class="export-controls">
+                    <select id="export-format">
+                        <option value="csv">Export as CSV</option>
+                        <option value="bibtex">Export as BibTeX</option>
+                        <option value="doi_txt">DOI only (.txt)</option>
+                        <option value="doi_clipboard">DOI only (Clipboard)</option>
+                        <option value="apa_txt">APA 7 (.txt)</option>
+                        <option value="apa_clipboard">APA 7 (Clipboard)</option>
+                    </select>
+                    <button id="btn-export-list" class="btn">Export</button>
+                </div>
+            </div>
+
             <div class="stats-panel">
                 <div class="stats-header" id="stats-header">
                     <span>Run Statistics</span>
@@ -420,6 +492,87 @@
                 }, 50);
             }
         });
+
+        // ------------------ USER LIST MANAGEMENT ------------------
+            const userList = new Map();
+            let currentSelectedNode = null;
+
+            const btnAdd = document.getElementById('btn-add-list');
+            const listCount = document.getElementById('user-list-count');
+            const btnExport = document.getElementById('btn-export-list');
+
+            btnAdd.addEventListener('click', () => {
+                if (!currentSelectedNode) return;
+                if (userList.has(currentSelectedNode.id)) {
+                    userList.delete(currentSelectedNode.id);
+                    btnAdd.textContent = 'Add Selected Paper';
+                    btnAdd.style.borderColor = '#30363d';
+                } else {
+                    userList.set(currentSelectedNode.id, currentSelectedNode);
+                    btnAdd.textContent = 'Remove from List';
+                    btnAdd.style.borderColor = '#eb4a40';
+                }
+                listCount.textContent = userList.size;
+            });
+
+            function downloadBlob(content, filename, contentType) {
+                const blob = new Blob([content], { type: contentType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function escapeCSV(val) {
+                if (val === null || val === undefined) return '""';
+                const str = String(val);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+            }
+
+            btnExport.addEventListener('click', () => {
+                if (userList.size === 0) {
+                    alert('Your saved list is empty. Click a paper and add it first!');
+                    return;
+                }
+
+                const format = document.getElementById('export-format').value;
+                const items = Array.from(userList.values());
+
+                if (format === 'csv') {
+                    const header = "doi,title,authors,year,journal,citation_count,importance_score,role\n";
+                    const rows = items.map(d => {
+                        let role = d.importance === 999 ? 'Core (Initial Seed)' : (d.is_secondary ? 'Core (Secondary)' : 'Peripheral');
+                        return [d.id, d.fullTitle, (d.authors || []).join('; '), d.year, d.journal, d.citations, d.importance, role]
+                            .map(escapeCSV).join(',');
+                    });
+                    downloadBlob(header + rows.join('\n'), 'citation_network_user_list.csv', 'text/csv');
+                }
+                else if (format === 'bibtex') {
+                    const content = items.map(d => {
+                        const authorStr = (d.authors || []).join(' and ');
+                        return `@article{${d.id},\n  title={${d.fullTitle}},\n  author={${authorStr}},\n  journal={${d.journal}},\n  year={${d.year}},\n  url={https://doi.org/${d.id}}\n}`;
+                    }).join('\n\n');
+                    downloadBlob(content, 'user_list.bib', 'text/plain');
+                }
+                else if (format === 'doi_txt' || format === 'doi_clipboard') {
+                    const content = items.map(d => d.id).join('\n');
+                    if (format === 'doi_txt') downloadBlob(content, 'user_list_dois.txt', 'text/plain');
+                    else navigator.clipboard.writeText(content).then(() => alert('DOIs copied to clipboard!'));
+                }
+                else if (format === 'apa_txt' || format === 'apa_clipboard') {
+                    const content = items.map(d => {
+                        const authorStr = (d.authors || []).join(', ');
+                        return `${authorStr} (${d.year}). ${d.fullTitle}. ${d.journal}. https://doi.org/${d.id}`;
+                    }).join('\n\n');
+                    if (format === 'apa_txt') downloadBlob(content, 'user_list_apa.txt', 'text/plain');
+                    else navigator.clipboard.writeText(content).then(() => alert('APA citations copied to clipboard!'));
+                }
+            });
 
         // ------------------ D3 VISUALIZATION ------------------
         const width = document.getElementById('network').clientWidth;
@@ -526,6 +679,12 @@
             node.style('opacity', 1.0).classed('active-node', false);
             linkGroup.style('opacity', 1.0);
             link.attr('marker-end', "url(#arrowhead)");
+            
+            // Disable list button when deselecting
+            currentSelectedNode = null;
+            btnAdd.disabled = true;
+            btnAdd.textContent = 'Add Selected Paper';
+            btnAdd.style.borderColor = '#30363d';
         });
 
         simulation.on('tick', () => {
@@ -565,6 +724,17 @@
             const doiLink = document.getElementById('doi-link');
             doiLink.href = `https://doi.org/${d.id}`; doiLink.textContent = d.id;
             document.getElementById('info').classList.add('active');
+
+            // Update Add to List button state
+            currentSelectedNode = d;
+            btnAdd.disabled = false;
+            if (userList.has(d.id)) {
+                btnAdd.textContent = 'Remove from List';
+                btnAdd.style.borderColor = '#eb4a40';
+            } else {
+                btnAdd.textContent = 'Add Selected Paper';
+                btnAdd.style.borderColor = '#30363d';
+            }
         }
     </script>
 </body>
