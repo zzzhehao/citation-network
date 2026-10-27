@@ -95,7 +95,28 @@ def main():
         help="Network filter threshold multiplier (default 0.2)",
     )
 
+    # cache handling
+    parser.add_argument("--cache-where", action="store_true", help="Show the cache file location and exit")
+    parser.add_argument("--cache-clean", action="store_true", help="Delete the cache file and exit")
+
     args = parser.parse_args()
+
+    # Cache Management Commands
+    CACHE_DIR = Path.home() / ".mytool_cache"
+    cache_file = CACHE_DIR / "citation_debug_cache.sqlite"
+
+    if args.cache_where:
+        print(f"Cache directory: {CACHE_DIR.absolute()}")
+        print(f"Cache file: {cache_file.absolute()} (Exists: {cache_file.exists()})")
+        sys.exit(0)
+
+    if args.cache_clean:
+        if cache_file.exists():
+            cache_file.unlink()
+            print(f"✅ Cache successfully deleted: {cache_file.absolute()}")
+        else:
+            print("ℹ️ No cache file found to delete.")
+        sys.exit(0)
 
     # [SAFEGUARD] Validate --core-award range
     if args.core_award < 0 or args.core_award > 0.2:
