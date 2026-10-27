@@ -130,11 +130,11 @@ def main():
         level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
-    # [UPDATED] Caching logic
+    # Caching logic
     if not args.no_cache:
         try:
             import requests_cache
-            from pathlib import Path
+            # from pathlib import Path
 
             CACHE_DIR = Path.home() / ".mytool_cache"
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
