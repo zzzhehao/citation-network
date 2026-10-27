@@ -368,6 +368,11 @@
                                 id="role"></span></div>
                         <div class="meta-row"><span class="meta-label">DOI:</span><a class="doi-link" id="doi-link"
                                 target="_blank"></a></div>
+                        <div class="meta-row">
+                            <span class="meta-label" style="display: block; margin-bottom: 4px;">Abstract:</span>
+                            <span class="meta-value" id="abstract"
+                                style="display: block; font-size: 11px; color: #8b949e; line-height: 1.4; max-height: 200px; overflow-y: auto; text-align: justify;"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -550,6 +555,7 @@
             document.getElementById('authors').textContent = d.authors.join(', ') || 'Unknown';
             document.getElementById('year').textContent = d.year;
             document.getElementById('journal').textContent = d.journal;
+            document.getElementById('abstract').textContent = d.abstract || 'No abstract available.';
             document.getElementById('citations').textContent = d.citations;
             document.getElementById('importance').textContent = d.importance === 999 ? 'SEED' : d.importance.toFixed(2);
             let roleText = 'Peripheral';
