@@ -408,6 +408,11 @@
             transition: opacity 0.3s, filter 0.3s;
         }
 
+        circle.saved-node {
+            stroke: #C072EB !important; /* Distinct green highlight */
+            stroke-width: 3px !important;
+        }
+
         circle:hover,
         circle.active-node {
             stroke: #ffffff !important;
@@ -620,6 +625,7 @@
                 }
                 listCount.textContent = userList.size;
                 updateSavedListUI();
+                d3.selectAll('circle').classed('saved-node', n => userList.has(n.id));
             });
 
             function downloadBlob(content, filename, contentType) {
