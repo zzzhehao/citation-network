@@ -551,6 +551,18 @@
                 <span>Papers (<span id="paper-list-count">0</span>)</span>
                 <span style="font-size: 10px; font-weight: 400;">Click to focus</span>
             </div>
+            <div id="left-sort-bar"
+                style="padding: 8px 12px; border-bottom: 1px solid #30363d; background: #161b22; flex-shrink: 0;">
+                <label for="left-sort-select" style="margin-bottom: 4px; font-size: 10px;">Sort Papers By</label>
+                <select id="left-sort-select">
+                    <option value="score-desc" selected>Score (High to Low)</option>
+                    <option value="score-asc">Score (Low to High)</option>
+                    <option value="year-desc">Year (Newest to Oldest)</option>
+                    <option value="year-asc">Year (Oldest to Newest)</option>
+                    <option value="citations-desc">Citations (High to Low)</option>
+                    <option value="citations-asc">Citations (Low to High)</option>
+                </select>
+            </div>
             <div id="paper-list"></div>
 
             <div id="left-bottom-panel">
@@ -716,42 +728,73 @@
             }
         });
 
-        const paperListEl = document.getElementById('paper-list');
-        document.getElementById('paper-list-count').textContent = nodes.length;
-
-        const sortedNodesForList = [...nodes].sort((a, b) => b.importance - a.importance || b.year - a.year);
+        const sortSelectEl = document.getElementById('left-sort-select');
         const listItemsById = new Map();
 
-        sortedNodesForList.forEach(d => {
-            const item = document.createElement('div');
-            item.className = 'paper-list-item';
-            item.dataset.id = d.id;
+        function getSortedNodes(sortKey) {
+            const copy = [...nodes];
+            switch (sortKey) {
+                case 'score-asc':
+                    return copy.sort((a, b) => (a.importance - b.importance) || (b.year - a.year));
+                case 'year-desc':
+                    return copy.sort((a, b) => (b.year - a.year) || (b.importance - a.importance));
+                case 'year-asc':
+                    return copy.sort((a, b) => (a.year - b.year) || (b.importance - a.importance));
+                case 'citations-desc':
+                    return copy.sort((a, b) => (b.citations - a.citations) || (b.importance - a.importance));
+                case 'citations-asc':
+                    return copy.sort((a, b) => (a.citations - b.citations) || (b.importance - a.importance));
+                case 'score-desc':
+                default:
+                    return copy.sort((a, b) => (b.importance - a.importance) || (b.year - a.year));
+            }
+        }
 
-            const dot = document.createElement('span');
-            dot.className = 'paper-dot';
-            dot.style.backgroundColor = getNodeColor(d);
+        function renderPaperList(sortKey = sortSelectEl.value) {
+            paperListEl.innerHTML = '';
+            listItemsById.clear();
 
-            const body = document.createElement('div');
-            body.className = 'paper-item-body';
-            body.innerHTML = `
-                <div class="paper-item-title" title="${d.fullTitle.replace(/"/g, '&quot;')}">${d.fullTitle}</div>
-                <div class="paper-item-authors">${formatCompactAuthors(d.authors)}</div>
-                <div class="paper-item-meta">
-                    <span>${d.year}</span>
-                    <span>Score: ${formatScore(d)}</span>
-                </div>
-            `;
+            const ordered = getSortedNodes(sortKey);
+            ordered.forEach(d => {
+                const item = document.createElement('div');
+                item.className = 'paper-list-item';
+                if (currentSelectedNode && currentSelectedNode.id === d.id) {
+                    item.classList.add('active');
+                }
+                item.dataset.id = d.id;
 
-            item.appendChild(dot);
-            item.appendChild(body);
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectNode(d);
+                const dot = document.createElement('span');
+                dot.className = 'paper-dot';
+                dot.style.backgroundColor = getNodeColor(d);
+
+                const body = document.createElement('div');
+                body.className = 'paper-item-body';
+                body.innerHTML = `
+        <div class="paper-item-title" title="${d.fullTitle.replace(/"/g, '&quot;')}">${d.fullTitle}</div>
+        <div class="paper-item-authors">${formatCompactAuthors(d.authors)}</div>
+        <div class="paper-item-meta">
+            <span>${d.year}</span>
+            <span>Score: ${formatScore(d)} | Cites: ${d.citations}</span>
+        </div>
+    `;
+
+                item.appendChild(dot);
+                item.appendChild(body);
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectNode(d);
+                });
+
+                paperListEl.appendChild(item);
+                listItemsById.set(d.id, { item, dot });
             });
+        }
 
-            paperListEl.appendChild(item);
-            listItemsById.set(d.id, { item, dot });
+        sortSelectEl.addEventListener('change', (e) => {
+            renderPaperList(e.target.value);
         });
+
+        renderPaperList();
 
         function syncVisualStates() {
             d3.selectAll('circle')
