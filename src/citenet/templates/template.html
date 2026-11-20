@@ -26,30 +26,120 @@
             display: flex;
         }
 
+        /* Left Sidebar */
+        #left-sidebar {
+            width: 320px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .left-list-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #30363d;
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        #paper-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .paper-list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 10px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .paper-list-item:hover {
+            border-color: #79c0ff;
+        }
+
+        .paper-list-item.active {
+            border-color: #ffffff;
+            background: #1c2430;
+        }
+
+        .paper-dot {
+            width: 10px;
+            height: 10px;
+            min-width: 10px;
+            min-height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            margin-top: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .paper-item-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .paper-item-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #e6edf3;
+            line-height: 1.3;
+            margin-bottom: 3px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .paper-item-authors {
+            font-size: 11px;
+            color: #8b949e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .paper-item-meta {
+            font-size: 10px;
+            color: #79c0ff;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        #left-bottom-panel {
+            border-top: 1px solid #30363d;
+            background: #161b22;
+            padding: 12px 16px 14px;
+            flex-shrink: 0;
+        }
+
         #network {
             flex: 1;
             position: relative;
+            min-width: 0;
         }
 
-        /* [NEW] Floating Overlay Controls */
-        #overlay-controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 260px;
-            background: rgba(22, 27, 34, 0.85);
-            /* Semi-transparent dark background */
-            backdrop-filter: blur(6px);
-            /* Frosted glass effect */
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 15px;
-            z-index: 100;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            display: flex;
-            flex-direction: column;
-        }
-
+        /* Right Sidebar */
         #sidebar {
             width: 310px;
             background: #161b22;
@@ -120,17 +210,15 @@
             text-decoration: underline;
         }
 
-        /* Updated UI Controls for Overlay */
         .control-group {
-            margin-bottom: 15px;
-            flex-shrink: 0;
+            margin-bottom: 12px;
         }
 
         label {
             display: block;
             font-size: 11px;
             color: #8b949e;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -153,51 +241,56 @@
         }
 
         .color-scale {
-            padding-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid #30363d;
-            flex-shrink: 0;
         }
 
         .scale-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #8b949e;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .legend-item {
+        .legend-row {
             display: flex;
-            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
             margin-bottom: 8px;
         }
 
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
         .legend-color {
-            width: 12px;
-            height: 12px;
+            width: 11px;
+            height: 11px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 6px;
             border: 1px solid #30363d;
         }
 
         .legend-text {
-            font-size: 12px;
+            font-size: 11px;
             color: #e6edf3;
         }
 
         .scale-bar {
-            height: 16px;
+            height: 12px;
             background: linear-gradient(to left, #D1EEEAFF, #A8DBD9FF, #85C4C9FF, #68ABB8FF, #4F90A6FF, #3B738FFF, #2A5674FF);
             border-radius: 3px;
-            margin-bottom: 5px;
-            margin-top: 12px;
+            margin-bottom: 4px;
+            margin-top: 6px;
         }
 
         .scale-text {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
+            font-size: 10px;
             color: #8b949e;
         }
 
@@ -299,6 +392,12 @@
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .btn.is-read {
+            background: #2b313a;
+            border-color: #8b949e;
+            color: #ffffff;
         }
 
         .export-controls {
@@ -405,13 +504,18 @@
 
         circle {
             cursor: pointer;
-            transition: opacity 0.3s, filter 0.3s;
+            transition: opacity 0.3s, filter 0.3s, fill 0.25s;
+        }
+
+        circle.saved-node {
+            stroke: #1A7B59 !important;
+            stroke-width: 2.5px !important;
         }
 
         circle:hover,
         circle.active-node {
             stroke: #ffffff !important;
-            stroke-width: 2px !important;
+            stroke-width: 2.5px !important;
             filter: brightness(1.2);
         }
 
@@ -442,9 +546,26 @@
 
 <body>
     <div id="container">
-        <div id="network">
+        <div id="left-sidebar">
+            <div class="left-list-header">
+                <span>Papers (<span id="paper-list-count">0</span>)</span>
+                <span style="font-size: 10px; font-weight: 400;">Click to focus</span>
+            </div>
+            <div id="left-sort-bar"
+                style="padding: 8px 12px; border-bottom: 1px solid #30363d; background: #161b22; flex-shrink: 0;">
+                <label for="left-sort-select" style="margin-bottom: 4px; font-size: 10px;">Sort Papers By</label>
+                <select id="left-sort-select">
+                    <option value="score-desc" selected>Score (High to Low)</option>
+                    <option value="score-asc">Score (Low to High)</option>
+                    <option value="year-desc">Year (Newest to Oldest)</option>
+                    <option value="year-asc">Year (Oldest to Newest)</option>
+                    <option value="citations-desc">Citations (High to Low)</option>
+                    <option value="citations-asc">Citations (Low to High)</option>
+                </select>
+            </div>
+            <div id="paper-list"></div>
 
-            <div id="overlay-controls">
+            <div id="left-bottom-panel">
                 <div class="control-group">
                     <label for="color-mode">Peripheral Color Mapping</label>
                     <select id="color-mode">
@@ -454,14 +575,20 @@
                 </div>
 
                 <div class="color-scale">
-                    <div class="scale-label">Node Roles & Timeline</div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #f3e79b;"></div>
-                        <div class="legend-text">Initial Core</div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #eb4a40;"></div>
-                        <div class="legend-text">Secondary Core</div>
+                    <div class="scale-label">Legend</div>
+                    <div class="legend-row">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #fcde9c;"></div>
+                            <div class="legend-text">Initial Core</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #eb4a40;"></div>
+                            <div class="legend-text">Secondary Core</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #6e7681;"></div>
+                            <div class="legend-text">Read</div>
+                        </div>
                     </div>
 
                     <div class="scale-bar"></div>
@@ -471,8 +598,9 @@
                     </div>
                 </div>
             </div>
-
         </div>
+
+        <div id="network"></div>
 
         <div id="sidebar">
             <div id="info-container">
@@ -501,14 +629,15 @@
 
                 <div id="sidebar-placeholder"
                     style="color: #8b949e; font-size: 13px; text-align: center; margin-top: 40px; padding: 20px;">
-                    Click any node in the network to view its publication details here.
+                    Click any node in the network or paper in the left list to view details here.
                 </div>
             </div>
 
             <div class="user-list-panel">
                 <div class="user-list-header">User Saved Papers (<span id="user-list-count">0</span>)</div>
+                <button id="btn-mark-read" class="btn" disabled>Mark as Read</button>
                 <button id="btn-add-list" class="btn" disabled>Add Selected Paper</button>
-            
+
                 <div class="export-controls">
                     <select id="export-format">
                         <option value="csv">Export as CSV</option>
@@ -526,9 +655,7 @@
                         <span>View Saved Papers</span>
                         <span id="saved-list-chevron">▼</span>
                     </div>
-                    <div class="saved-list-content" id="saved-list-content">
-                        <!-- Saved items will be injected here -->
-                    </div>
+                    <div class="saved-list-content" id="saved-list-content"></div>
                 </div>
             </div>
 
@@ -537,10 +664,8 @@
                     <span>Run Statistics</span>
                     <span id="stats-chevron">▼</span>
                 </div>
-                <div class="stats-content" id="stats-content">
-                </div>
+                <div class="stats-content" id="stats-content"></div>
             </div>
-
         </div>
     </div>
 
@@ -551,6 +676,39 @@
         const links = __LINKS_JSON__;
         const stats = __STATS_JSON__;
 
+        const READ_COLOR = '#6e7681';
+        const INITIAL_CORE_COLOR = '#fcde9c';
+        const SECONDARY_CORE_COLOR = '#eb4a40';
+
+        let currentColorMode = 'importance';
+        const readPapers = new Set();
+        const userList = new Map();
+        let currentSelectedNode = null;
+
+        const colorScale = d3.scaleLinear()
+            .domain([1, 0.83, 0.66, 0.5, 0.33, 0.16, 0])
+            .range(['#D1EEEAFF', '#A8DBD9FF', '#85C4C9FF', '#68ABB8FF', '#4F90A6FF', '#3B738FFF', '#2A5674FF']);
+
+        function getNodeColor(d) {
+            if (readPapers.has(d.id)) return READ_COLOR;
+            if (d.importance === 999) return INITIAL_CORE_COLOR;
+            if (d.is_secondary) return SECONDARY_CORE_COLOR;
+            const val = currentColorMode === 'year' ? d.year_color_val : d.imp_color_val;
+            return colorScale(val);
+        }
+
+        function formatCompactAuthors(authors) {
+            if (!Array.isArray(authors) || authors.length === 0) return 'Unknown';
+            if (authors.length === 1) return authors[0];
+            if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
+            return `${authors[0]} et al.`;
+        }
+
+        function formatScore(d) {
+            return d.importance === 999 ? 'SEED' : Number(d.importance).toFixed(2);
+        }
+
+        // ------------------ STATS & LEFT PAPER LIST ------------------
         const statsContent = document.getElementById('stats-content');
         for (const [key, value] of Object.entries(stats)) {
             const row = document.createElement('div');
@@ -563,7 +721,6 @@
         statsHeader.addEventListener('click', () => {
             statsContent.classList.toggle('active');
             document.getElementById('stats-chevron').textContent = statsContent.classList.contains('active') ? '▲' : '▼';
-
             if (statsContent.classList.contains('active')) {
                 setTimeout(() => {
                     document.getElementById('sidebar').scrollTo({ top: document.getElementById('sidebar').scrollHeight, behavior: 'smooth' });
@@ -571,115 +728,235 @@
             }
         });
 
-        // ------------------ USER LIST MANAGEMENT ------------------
-            const userList = new Map();
-            let currentSelectedNode = null;
+        const paperListEl = document.getElementById('paper-list');
+        document.getElementById('paper-list-count').textContent = nodes.length;
+        const sortSelectEl = document.getElementById('left-sort-select');
+        const listItemsById = new Map();
 
-            const btnAdd = document.getElementById('btn-add-list');
-            const listCount = document.getElementById('user-list-count');
-            const btnExport = document.getElementById('btn-export-list');
+        function getSortedNodes(sortKey) {
+            const copy = [...nodes];
+            switch (sortKey) {
+                case 'score-asc':
+                    return copy.sort((a, b) => (a.importance - b.importance) || (b.year - a.year));
+                case 'year-desc':
+                    return copy.sort((a, b) => (b.year - a.year) || (b.importance - a.importance));
+                case 'year-asc':
+                    return copy.sort((a, b) => (a.year - b.year) || (b.importance - a.importance));
+                case 'citations-desc':
+                    return copy.sort((a, b) => (b.citations - a.citations) || (b.importance - a.importance));
+                case 'citations-asc':
+                    return copy.sort((a, b) => (a.citations - b.citations) || (b.importance - a.importance));
+                case 'score-desc':
+                default:
+                    return copy.sort((a, b) => (b.importance - a.importance) || (b.year - a.year));
+            }
+        }
 
-            const savedListHeader = document.getElementById('saved-list-header');
-            const savedListContent = document.getElementById('saved-list-content');
-            const savedListChevron = document.getElementById('saved-list-chevron');
+        function renderPaperList(sortKey = sortSelectEl.value) {
+            paperListEl.innerHTML = '';
+            listItemsById.clear();
 
-            // Toggle the saved list display
-            savedListHeader.addEventListener('click', () => {
-                savedListContent.classList.toggle('active');
-                savedListChevron.textContent = savedListContent.classList.contains('active') ? '▲' : '▼';
+            const ordered = getSortedNodes(sortKey);
+            ordered.forEach(d => {
+                const item = document.createElement('div');
+                item.className = 'paper-list-item';
+                if (currentSelectedNode && currentSelectedNode.id === d.id) {
+                    item.classList.add('active');
+                }
+                item.dataset.id = d.id;
+
+                const dot = document.createElement('span');
+                dot.className = 'paper-dot';
+                dot.style.backgroundColor = getNodeColor(d);
+
+                const body = document.createElement('div');
+                body.className = 'paper-item-body';
+                body.innerHTML = `
+        <div class="paper-item-title" title="${d.fullTitle.replace(/"/g, '&quot;')}">${d.fullTitle}</div>
+        <div class="paper-item-authors">${formatCompactAuthors(d.authors)}</div>
+        <div class="paper-item-meta">
+            <span>${d.year}</span>
+            <span>Score: ${formatScore(d)} | Cites: ${d.citations}</span>
+        </div>
+    `;
+
+                item.appendChild(dot);
+                item.appendChild(body);
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectNode(d);
+                });
+
+                paperListEl.appendChild(item);
+                listItemsById.set(d.id, { item, dot });
+            });
+        }
+
+        sortSelectEl.addEventListener('change', (e) => {
+            renderPaperList(e.target.value);
+        });
+
+        renderPaperList();
+
+        function syncVisualStates() {
+            d3.selectAll('circle')
+                .attr('fill', d => getNodeColor(d))
+                .classed('saved-node', d => userList.has(d.id))
+                .classed('active-node', d => currentSelectedNode && currentSelectedNode.id === d.id);
+
+            nodes.forEach(d => {
+                const entry = listItemsById.get(d.id);
+                if (!entry) return;
+                entry.dot.style.backgroundColor = getNodeColor(d);
+                entry.item.classList.toggle('active', Boolean(currentSelectedNode && currentSelectedNode.id === d.id));
             });
 
-            // Function to refresh the HTML list of saved papers
-            function updateSavedListUI() {
-                savedListContent.innerHTML = '';
-                for (const d of userList.values()) {
-                    const item = document.createElement('div');
-                    item.className = 'saved-list-item';
-                    item.innerHTML = `
-                <div class="saved-list-item-title">${d.fullTitle}</div>
-                <div class="saved-list-item-meta">${d.year} | ${d.authors[0] || 'Unknown'} et al.</div>
-            `;
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectNode(d); // We will define this next
-                    });
-                    savedListContent.appendChild(item);
-                }
+            updateActionButtons();
+        }
+
+        // ------------------ USER LIST & READ STATE ------------------
+        const btnRead = document.getElementById('btn-mark-read');
+        const btnAdd = document.getElementById('btn-add-list');
+        const listCount = document.getElementById('user-list-count');
+        const btnExport = document.getElementById('btn-export-list');
+
+        const savedListHeader = document.getElementById('saved-list-header');
+        const savedListContent = document.getElementById('saved-list-content');
+        const savedListChevron = document.getElementById('saved-list-chevron');
+
+        savedListHeader.addEventListener('click', () => {
+            savedListContent.classList.toggle('active');
+            savedListChevron.textContent = savedListContent.classList.contains('active') ? '▲' : '▼';
+        });
+
+        function updateActionButtons() {
+            if (!currentSelectedNode) {
+                btnRead.disabled = true;
+                btnRead.textContent = 'Mark as Read';
+                btnRead.classList.remove('is-read');
+
+                btnAdd.disabled = true;
+                btnAdd.textContent = 'Add Selected Paper';
+                btnAdd.style.borderColor = '#30363d';
+                return;
             }
 
-            btnAdd.addEventListener('click', () => {
-                if (!currentSelectedNode) return;
-                if (userList.has(currentSelectedNode.id)) {
-                    userList.delete(currentSelectedNode.id);
-                    btnAdd.textContent = 'Add Selected Paper';
-                    btnAdd.style.borderColor = '#30363d';
-                } else {
-                    userList.set(currentSelectedNode.id, currentSelectedNode);
-                    btnAdd.textContent = 'Remove from List';
-                    btnAdd.style.borderColor = '#eb4a40';
-                }
-                listCount.textContent = userList.size;
-                updateSavedListUI();
-            });
-
-            function downloadBlob(content, filename, contentType) {
-                const blob = new Blob([content], { type: contentType });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.click();
-                URL.revokeObjectURL(url);
+            btnRead.disabled = false;
+            if (readPapers.has(currentSelectedNode.id)) {
+                btnRead.textContent = 'Marked as Read (Undo)';
+                btnRead.classList.add('is-read');
+            } else {
+                btnRead.textContent = 'Mark as Read';
+                btnRead.classList.remove('is-read');
             }
 
-            function escapeCSV(val) {
-                if (val === null || val === undefined) return '""';
-                const str = String(val);
-                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                    return `"${str.replace(/"/g, '""')}"`;
-                }
-                return str;
+            btnAdd.disabled = false;
+            if (userList.has(currentSelectedNode.id)) {
+                btnAdd.textContent = 'Remove from List';
+                btnAdd.style.borderColor = '#eb4a40';
+            } else {
+                btnAdd.textContent = 'Add Selected Paper';
+                btnAdd.style.borderColor = '#30363d';
+            }
+        }
+
+        btnRead.addEventListener('click', () => {
+            if (!currentSelectedNode) return;
+            if (readPapers.has(currentSelectedNode.id)) {
+                readPapers.delete(currentSelectedNode.id);
+            } else {
+                readPapers.add(currentSelectedNode.id);
+            }
+            syncVisualStates();
+        });
+
+        function updateSavedListUI() {
+            savedListContent.innerHTML = '';
+            for (const d of userList.values()) {
+                const item = document.createElement('div');
+                item.className = 'saved-list-item';
+                item.innerHTML = `
+                    <div class="saved-list-item-title">${d.fullTitle}</div>
+                    <div class="saved-list-item-meta">${d.year} | ${formatCompactAuthors(d.authors)}</div>
+                `;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectNode(d);
+                });
+                savedListContent.appendChild(item);
+            }
+        }
+
+        btnAdd.addEventListener('click', () => {
+            if (!currentSelectedNode) return;
+            if (userList.has(currentSelectedNode.id)) {
+                userList.delete(currentSelectedNode.id);
+            } else {
+                userList.set(currentSelectedNode.id, currentSelectedNode);
+            }
+            listCount.textContent = userList.size;
+            updateSavedListUI();
+            syncVisualStates();
+        });
+
+        function downloadBlob(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeCSV(val) {
+            if (val === null || val === undefined) return '""';
+            const str = String(val);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        }
+
+        btnExport.addEventListener('click', () => {
+            if (userList.size === 0) {
+                alert('Your saved list is empty. Click a paper and add it first!');
+                return;
             }
 
-            btnExport.addEventListener('click', () => {
-                if (userList.size === 0) {
-                    alert('Your saved list is empty. Click a paper and add it first!');
-                    return;
-                }
+            const format = document.getElementById('export-format').value;
+            const items = Array.from(userList.values());
 
-                const format = document.getElementById('export-format').value;
-                const items = Array.from(userList.values());
-
-                if (format === 'csv') {
-                    const header = "doi,title,authors,year,journal,citation_count,importance_score,role\n";
-                    const rows = items.map(d => {
-                        let role = d.importance === 999 ? 'Core (Initial Seed)' : (d.is_secondary ? 'Core (Secondary)' : 'Peripheral');
-                        return [d.id, d.fullTitle, (d.authors || []).join('; '), d.year, d.journal, d.citations, d.importance, role]
-                            .map(escapeCSV).join(',');
-                    });
-                    downloadBlob(header + rows.join('\n'), 'citation_network_user_list.csv', 'text/csv');
-                }
-                else if (format === 'bibtex') {
-                    const content = items.map(d => {
-                        const authorStr = (d.authors || []).join(' and ');
-                        return `@article{${d.id},\n  title={${d.fullTitle}},\n  author={${authorStr}},\n  journal={${d.journal}},\n  year={${d.year}},\n  url={https://doi.org/${d.id}}\n}`;
-                    }).join('\n\n');
-                    downloadBlob(content, 'user_list.bib', 'text/plain');
-                }
-                else if (format === 'doi_txt' || format === 'doi_clipboard') {
-                    const content = items.map(d => d.id).join('\n');
-                    if (format === 'doi_txt') downloadBlob(content, 'user_list_dois.txt', 'text/plain');
-                    else navigator.clipboard.writeText(content).then(() => alert('DOIs copied to clipboard!'));
-                }
-                else if (format === 'apa_txt' || format === 'apa_clipboard') {
-                    const content = items.map(d => {
-                        const authorStr = (d.authors || []).join(', ');
-                        return `${authorStr} (${d.year}). ${d.fullTitle}. ${d.journal}. https://doi.org/${d.id}`;
-                    }).join('\n\n');
-                    if (format === 'apa_txt') downloadBlob(content, 'user_list_apa.txt', 'text/plain');
-                    else navigator.clipboard.writeText(content).then(() => alert('APA citations copied to clipboard!'));
-                }
-            });
+            if (format === 'csv') {
+                const header = "doi,title,authors,year,journal,citation_count,importance_score,role\n";
+                const rows = items.map(d => {
+                    let role = d.importance === 999 ? 'Core (Initial Seed)' : (d.is_secondary ? 'Core (Secondary)' : 'Peripheral');
+                    return [d.id, d.fullTitle, (d.authors || []).join('; '), d.year, d.journal, d.citations, d.importance, role]
+                        .map(escapeCSV).join(',');
+                });
+                downloadBlob(header + rows.join('\n'), 'citation_network_user_list.csv', 'text/csv');
+            }
+            else if (format === 'bibtex') {
+                const content = items.map(d => {
+                    const authorStr = (d.authors || []).join(' and ');
+                    return `@article{${d.id},\n  title={${d.fullTitle}},\n  author={${authorStr}},\n  journal={${d.journal}},\n  year={${d.year}},\n  url={https://doi.org/${d.id}}\n}`;
+                }).join('\n\n');
+                downloadBlob(content, 'user_list.bib', 'text/plain');
+            }
+            else if (format === 'doi_txt' || format === 'doi_clipboard') {
+                const content = items.map(d => d.id).join('\n');
+                if (format === 'doi_txt') downloadBlob(content, 'user_list_dois.txt', 'text/plain');
+                else navigator.clipboard.writeText(content).then(() => alert('DOIs copied to clipboard!'));
+            }
+            else if (format === 'apa_txt' || format === 'apa_clipboard') {
+                const content = items.map(d => {
+                    const authorStr = (d.authors || []).join(', ');
+                    return `${authorStr} (${d.year}). ${d.fullTitle}. ${d.journal}. https://doi.org/${d.id}`;
+                }).join('\n\n');
+                if (format === 'apa_txt') downloadBlob(content, 'user_list_apa.txt', 'text/plain');
+                else navigator.clipboard.writeText(content).then(() => alert('APA citations copied to clipboard!'));
+            }
+        });
 
         // ------------------ D3 VISUALIZATION ------------------
         const width = document.getElementById('network').clientWidth;
@@ -720,14 +997,12 @@
         const linkGroup = g.selectAll('.link-group').data(links).enter().append('g').attr('class', 'link-group');
         const link = linkGroup.append('line').attr("marker-end", "url(#arrowhead)");
 
-        const colorScale = d3.scaleLinear()
-            .domain([1, 0.83, 0.66, 0.5, 0.33, 0.16, 0])
-            .range(['#D1EEEAFF', '#A8DBD9FF', '#85C4C9FF', '#68ABB8FF', '#4F90A6FF', '#3B738FFF', '#2A5674FF']);
-
         function selectNode(d) {
+            currentSelectedNode = d;
             showInfo(d);
-            const connected = new Set([d.id]);
+            updateActionButtons();
 
+            const connected = new Set([d.id]);
             linkGroup.style('opacity', l => {
                 if (l.source.id === d.id || l.target.id === d.id) {
                     connected.add(l.source.id);
@@ -739,25 +1014,28 @@
 
             link.attr("marker-end", l => (l.source.id === d.id || l.target.id === d.id) ? "url(#arrowhead)" : "url(#arrowhead-dimmed)");
             node.style('opacity', n => connected.has(n.id) ? 1.0 : 0.1).classed('active-node', n => n.id === d.id);
+
+            listItemsById.forEach((entry, id) => {
+                const isSelected = id === d.id;
+                entry.item.classList.toggle('active', isSelected);
+                if (isSelected) {
+                    entry.item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
         }
 
         const node = g.selectAll('circle').data(nodes).enter().append('circle')
             .attr('r', d => d.size)
-            .attr('fill', d => {
-                if (d.importance === 999) return '#fcde9c';
-                if (d.is_secondary) return '#eb4a40';
-                return colorScale(d.imp_color_val);
-            })
+            .attr('fill', d => getNodeColor(d))
             .attr('stroke', '#30363d').attr('stroke-width', 1)
             .call(d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended))
-
             .on('click', (event, d) => {
                 event.stopPropagation();
                 selectNode(d);
             })
             .on('mouseover', (event, d) => {
                 const tooltip = document.getElementById('tooltip');
-                tooltip.innerHTML = `<strong>${d.fullTitle.substring(0, 60)}${d.fullTitle.length > 60 ? '...' : ''}</strong><br><span style="color:#8b949e; font-size:10px;">Cites: ${d.citations} | Score: ${d.importance.toFixed(2)} | Year: ${d.year}</span>`;
+                tooltip.innerHTML = `<strong>${d.fullTitle.substring(0, 60)}${d.fullTitle.length > 60 ? '...' : ''}</strong><br><span style="color:#8b949e; font-size:10px;">Cites: ${d.citations} | Score: ${formatScore(d)} | Year: ${d.year}</span>`;
                 tooltip.style.display = 'block';
                 tooltip.style.left = event.pageX + 10 + 'px'; tooltip.style.top = event.pageY + 10 + 'px';
             })
@@ -767,20 +1045,15 @@
             })
             .on('mouseout', () => document.getElementById('tooltip').style.display = 'none');
 
-        // Prevent overlay clicks from deselecting nodes
-        d3.select('#overlay-controls').on('click', (e) => {
-            e.stopPropagation();
-        });
+        document.getElementById('color-mode').addEventListener('change', function () {
+            currentColorMode = this.value;
+            const isYear = currentColorMode === 'year';
 
-        d3.select('#color-mode').on('change', function () {
-            const mode = this.value;
-            const isYear = mode === 'year';
-
-            node.transition().duration(750)
-                .attr('fill', d => {
-                    if (d.is_core || d.is_secondary) return (d.importance === 999) ? '#fcde9c' : '#eb4a40';
-                    return colorScale(isYear ? d.year_color_val : d.imp_color_val);
-                });
+            node.transition().duration(500).attr('fill', d => getNodeColor(d));
+            nodes.forEach(d => {
+                const entry = listItemsById.get(d.id);
+                if (entry) entry.dot.style.backgroundColor = getNodeColor(d);
+            });
 
             document.getElementById('legend-min').textContent = isYear ? 'Oldest' : 'Lower Score';
             document.getElementById('legend-max').textContent = isYear ? 'Newest' : 'Higher Score';
@@ -792,12 +1065,10 @@
             node.style('opacity', 1.0).classed('active-node', false);
             linkGroup.style('opacity', 1.0);
             link.attr('marker-end', "url(#arrowhead)");
-            
-            // Disable list button when deselecting
+
             currentSelectedNode = null;
-            btnAdd.disabled = true;
-            btnAdd.textContent = 'Add Selected Paper';
-            btnAdd.style.borderColor = '#30363d';
+            listItemsById.forEach(entry => entry.item.classList.remove('active'));
+            updateActionButtons();
         });
 
         simulation.on('tick', () => {
@@ -824,12 +1095,12 @@
         function showInfo(d) {
             document.getElementById('sidebar-placeholder').style.display = 'none';
             document.getElementById('title').textContent = d.fullTitle;
-            document.getElementById('authors').textContent = d.authors.join(', ') || 'Unknown';
+            document.getElementById('authors').textContent = (d.authors || []).join(', ') || 'Unknown';
             document.getElementById('year').textContent = d.year;
             document.getElementById('journal').textContent = d.journal;
             document.getElementById('abstract').textContent = d.abstract || 'No abstract available.';
             document.getElementById('citations').textContent = d.citations;
-            document.getElementById('importance').textContent = d.importance === 999 ? 'SEED' : d.importance.toFixed(2);
+            document.getElementById('importance').textContent = formatScore(d);
             let roleText = 'Peripheral';
             if (d.importance === 999) roleText = 'Core (Initial)';
             else if (d.is_secondary) roleText = 'Core (Secondary)';
@@ -837,17 +1108,6 @@
             const doiLink = document.getElementById('doi-link');
             doiLink.href = `https://doi.org/${d.id}`; doiLink.textContent = d.id;
             document.getElementById('info').classList.add('active');
-
-            // Update Add to List button state
-            currentSelectedNode = d;
-            btnAdd.disabled = false;
-            if (userList.has(d.id)) {
-                btnAdd.textContent = 'Remove from List';
-                btnAdd.style.borderColor = '#eb4a40';
-            } else {
-                btnAdd.textContent = 'Add Selected Paper';
-                btnAdd.style.borderColor = '#30363d';
-            }
         }
     </script>
 </body>
