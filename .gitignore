@@ -1,3 +1,5 @@
+*.code-workspace
+
 **.sqlite
 **/venv/
 **/__pycache__/

@@ -151,7 +151,7 @@ class NetworkVisualizer:
                     "imp_color_val": imp_val,
                     "year_color_val": year_val,
                     "year": pub.year,
-                    "authors": pub.authors[:2],
+                    "authors": pub.authors,
                     "journal": pub.journal,
                     "fullTitle": pub.title,
                     "is_secondary": is_secondary,
