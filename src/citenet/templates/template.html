@@ -728,6 +728,8 @@
             }
         });
 
+        const paperListEl = document.getElementById('paper-list');
+        document.getElementById('paper-list-count').textContent = nodes.length;
         const sortSelectEl = document.getElementById('left-sort-select');
         const listItemsById = new Map();
 
